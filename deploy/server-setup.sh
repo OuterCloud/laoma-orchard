@@ -122,17 +122,25 @@ docker exec "$NGINX_CONTAINER" nginx -s reload 2>&1 | sed 's/^/  /' || true
 # ─────────────────────────────────────────────────────────────
 log "6/7 申请 HTTPS 证书"
 # ─────────────────────────────────────────────────────────────
+# 为什么用 --standalone 而不是 webroot：
+#
+#   现有配置里 80 端口有 `server_name _;` 的块（只做 301 跳转）。按 nginx 的
+#   匹配规则，Host=laoma-apples.site 时，精确名虽然在本端口存在，但**默认
+#   server 是端口属性**，端口上的请求分发受它影响；实测该块会把 ACME 校验
+#   路径也 301 掉，certbot 拿不到文件。
+#
+#   我先前试图用 default_server 抢占默认位置，结果更糟：它让**所有**未匹配
+#   的 Host（含现有域名 mizunoamitiger.me）都落到我们块上并命中 return 503，
+#   把别人在用的站点弄坏了。已改回不声明默认 server，改用 standalone。
+#
+# standalone 需要在申请瞬间独占 80 端口，因此短暂停容器。用 trap 保证
+# 无论成败都会把容器拉起来。每次申请约 10~30 秒，仅此一次。
+# ─────────────────────────────────────────────────────────────
 if [[ -f "${SSL_DIR}/laoma-fullchain.pem" ]]; then
-  ok "证书已存在，跳过"
+  ok "证书已存在，跳过申请"
 else
   command -v certbot >/dev/null || { apt-get update -qq && apt-get install -y -qq certbot >/dev/null; }
 
-  # 邮箱是**可选**的。
-  # Let's Encrypt 的证书到期提醒邮件服务已于 2025-06-26 停止
-  # （https://letsencrypt.org/2025/06/26/expiration-notification-service-has-ended），
-  # 因此不填邮箱没有任何实际损失：证书照常签发，自动续期也照常工作
-  #（续期靠的是 certbot.timer，与邮箱无关）。
-  # 邮箱只存在服务器本地 /etc/letsencrypt/，不会写进证书，也不会出现在网站上。
   if [[ -n "${ACME_EMAIL:-}" ]]; then
     EMAIL_ARGS=(--email "$ACME_EMAIL")
   else
@@ -140,49 +148,87 @@ else
     warn "未提供 ACME_EMAIL，将不注册邮箱（不影响签发与自动续期）"
   fi
 
-  if certbot certonly --webroot -w "$ACME_DIR" \
-      -d "$SITE_DOMAIN" -d "www.${SITE_DOMAIN}" \
-      "${EMAIL_ARGS[@]}" --agree-tos --non-interactive --keep-until-expiring \
-      2>&1 | sed 's/^/  /'; then
-    LIVE="/etc/letsencrypt/live/${SITE_DOMAIN}"
-    cp "${LIVE}/fullchain.pem" "${SSL_DIR}/laoma-fullchain.pem"
-    cp "${LIVE}/privkey.pem"   "${SSL_DIR}/laoma-privkey.pem"
-    chmod 644 "${SSL_DIR}/laoma-fullchain.pem"
-    chmod 600 "${SSL_DIR}/laoma-privkey.pem"
-    # 证书就位后升级为 HTTP+HTTPS 配置（同样先静态校验）
-    FRAG_HTTPS="${REPO_DIR}/deploy/nginx-laoma-https.conf"
-    python3 "${REPO_DIR}/deploy/validate_nginx.py" "$FRAG_HTTPS" || \
-      warn "HTTPS 片段静态校验未通过，保持仅 HTTP"
-    python3 "${REPO_DIR}/deploy/patch_nginx.py" \
-      "$NGINX_CONF" "$FRAG_HTTPS"
-    if docker exec "$NGINX_CONTAINER" nginx -t >/dev/null 2>&1; then
-      docker exec "$NGINX_CONTAINER" nginx -s reload
-      ok "证书已安装，HTTPS 已启用"
-    else
-      warn "HTTPS 配置校验未通过，回退为仅 HTTP"
-      python3 "${REPO_DIR}/deploy/patch_nginx.py" \
-        "$NGINX_CONF" "${REPO_DIR}/deploy/nginx-laoma-http.conf"
-      docker exec "$NGINX_CONTAINER" nginx -s reload || true
-    fi
+  # 域名解析必须已指向本机，否则 standalone 也会失败
+  RESOLVED="$(getent hosts "$SITE_DOMAIN" | awk '{print $1; exit}' || true)"
+  if [[ -z "$RESOLVED" ]]; then
+    warn "${SITE_DOMAIN} 还没有解析记录，跳过证书申请"
+    warn "在 DNSPod 加好 A 记录后重新执行本脚本即可（幂等）"
   else
-    warn "证书申请失败。常见原因：DNS 尚未解析到本机、或防火墙未放行 80 端口"
-    warn "处理好后重新执行本脚本即可（幂等，不会重复改动）"
+    ok "域名已解析到 ${RESOLVED}"
+
+    CERT_STOPPED=0
+    restore_nginx() {
+      if [[ "$CERT_STOPPED" == "1" ]]; then
+        printf '\n  正在恢复 Nginx 容器…\n'
+        docker compose -f "$COMPOSE_MERGED" up -d nginx >/dev/null 2>&1 || \
+          docker start "$NGINX_CONTAINER" >/dev/null 2>&1 || true
+        sleep 2
+        CERT_STOPPED=0
+        printf '  容器已恢复\n'
+      fi
+    }
+    trap restore_nginx EXIT
+
+    docker compose -f "$COMPOSE_MERGED" stop nginx 2>&1 | sed 's/^/  /'
+    CERT_STOPPED=1
+    for _ in $(seq 1 15); do ss -lnt 2>/dev/null | grep -q ':80 ' || break; sleep 1; done
+    ok "80 端口已释放"
+
+    if certbot certonly --standalone \
+        -d "$SITE_DOMAIN" -d "www.${SITE_DOMAIN}" \
+        "${EMAIL_ARGS[@]}" --agree-tos --non-interactive --keep-until-expiring \
+        2>&1 | sed 's/^/  /'; then
+      LIVE="/etc/letsencrypt/live/${SITE_DOMAIN}"
+      cp "${LIVE}/fullchain.pem" "${SSL_DIR}/laoma-fullchain.pem"
+      cp "${LIVE}/privkey.pem"   "${SSL_DIR}/laoma-privkey.pem"
+      chmod 644 "${SSL_DIR}/laoma-fullchain.pem"
+      chmod 600 "${SSL_DIR}/laoma-privkey.pem"
+      ok "证书已安装"
+
+      # 证书就位后升级为 HTTP+HTTPS 配置（同样先静态校验）
+      FRAG_HTTPS="${REPO_DIR}/deploy/nginx-laoma-https.conf"
+      if python3 "${REPO_DIR}/deploy/validate_nginx.py" "$FRAG_HTTPS"; then
+        python3 "${REPO_DIR}/deploy/patch_nginx.py" "$NGINX_CONF" "$FRAG_HTTPS"
+      else
+        warn "HTTPS 片段静态校验未通过，保持仅 HTTP"
+      fi
+    else
+      warn "证书申请失败。常见原因：DNS 未指向本机、或 80 端口被占用"
+      warn "容器会被自动恢复，站点不受持续影响；处理后可重跑本脚本"
+    fi
+
+    restore_nginx
+    trap - EXIT
   fi
 fi
 
-# 自动续期后需要重载容器内的 nginx
+# 自动续期：standalone 需要独占 80 端口，所以续期时要临时停容器
 if [[ -d /etc/letsencrypt/renewal ]]; then
-  mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+  mkdir -p /etc/letsencrypt/renewal-hooks/pre /etc/letsencrypt/renewal-hooks/deploy
+
+  cat > /etc/letsencrypt/renewal-hooks/pre/laoma-stop-nginx.sh <<EOF
+#!/bin/sh
+# 续期前腾出 80 端口给 standalone 校验
+docker compose -f ${COMPOSE_MERGED} stop nginx >/dev/null 2>&1 || \
+  docker stop ${NGINX_CONTAINER} >/dev/null 2>&1 || true
+EOF
+
   cat > /etc/letsencrypt/renewal-hooks/deploy/laoma-reload.sh <<EOF
 #!/bin/sh
-# 续期后把新证书同步进容器并重载
-cp /etc/letsencrypt/live/${SITE_DOMAIN}/fullchain.pem ${SSL_DIR}/laoma-fullchain.pem
-cp /etc/letsencrypt/live/${SITE_DOMAIN}/privkey.pem   ${SSL_DIR}/laoma-privkey.pem
-docker exec ${NGINX_CONTAINER} nginx -s reload || true
+# 续期后同步证书、重启容器并重载
+LIVE=/etc/letsencrypt/live/${SITE_DOMAIN}
+[ -f "\$LIVE/fullchain.pem" ] && cp "\$LIVE/fullchain.pem" ${SSL_DIR}/laoma-fullchain.pem
+[ -f "\$LIVE/privkey.pem" ]   && cp "\$LIVE/privkey.pem"   ${SSL_DIR}/laoma-privkey.pem
+docker compose -f ${COMPOSE_MERGED} up -d nginx >/dev/null 2>&1 || \
+  docker start ${NGINX_CONTAINER} >/dev/null 2>&1 || true
+sleep 1
+docker exec ${NGINX_CONTAINER} nginx -s reload >/dev/null 2>&1 || true
 EOF
-  chmod +x /etc/letsencrypt/renewal-hooks/deploy/laoma-reload.sh
+
+  chmod +x /etc/letsencrypt/renewal-hooks/pre/laoma-stop-nginx.sh \
+           /etc/letsencrypt/renewal-hooks/deploy/laoma-reload.sh
   systemctl enable --now certbot.timer >/dev/null 2>&1 || true
-  ok "已配置自动续期钩子"
+  ok "已配置自动续期钩子（续期时会临时停容器约 10 秒）"
 fi
 
 # ─────────────────────────────────────────────────────────────

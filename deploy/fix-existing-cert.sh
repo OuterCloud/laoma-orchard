@@ -46,7 +46,7 @@ die()  { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 log "1/5 检查现有证书"
 # ─────────────────────────────────────────────────────────────
 command -v openssl >/dev/null || { apt-get update -qq && apt-get install -y -qq openssl >/dev/null; }
-CURRENT="${SSL_DIR}/fullchain.pem"
+CURRENT="${SSL_DIR}/laoma-fullchain.pem"
 if [[ -f "$CURRENT" ]]; then
   END="$(openssl x509 -enddate -noout -in "$CURRENT" 2>/dev/null | cut -d= -f2 || true)"
   if [[ -n "$END" ]] && openssl x509 -checkend 604800 -noout -in "$CURRENT" >/dev/null 2>&1; then
@@ -139,8 +139,8 @@ HOOK="/etc/letsencrypt/renewal-hooks/deploy/sync-${EXISTING_DOMAIN//./-}.sh"
 cat > "$HOOK" <<EOF
 #!/bin/sh
 # ${EXISTING_DOMAIN} 续期后同步证书并重载容器内 nginx
-cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/fullchain.pem ${SSL_DIR}/fullchain.pem
-cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/privkey.pem   ${SSL_DIR}/privkey.pem
+cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/fullchain.pem ${SSL_DIR}/laoma-fullchain.pem
+cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/privkey.pem   ${SSL_DIR}/laoma-privkey.pem
 docker exec ${NGINX_CONTAINER} nginx -s reload || true
 EOF
 chmod +x "$HOOK"
