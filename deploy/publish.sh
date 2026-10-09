@@ -50,7 +50,20 @@ else
   corepack pnpm build
 fi
 
+# ── 发布前的硬性门禁 ──
+# 教训：第 3 步用的是 `rsync --delete`。若构建失败或产物为空，
+# 它会把服务器上的站点目录**整个删空**（线上曾因此变成 404）。
+# 所以在任何同步动作之前，先确认产物是完整可用的。
 [[ -f dist/index.html ]] || die "构建产物缺失 dist/index.html（若已有产物，加 --no-build）"
+
+INDEX_BYTES=$(wc -c < dist/index.html | tr -d ' ')
+[[ "$INDEX_BYTES" -ge 5000 ]] || \
+  die "dist/index.html 只有 ${INDEX_BYTES} 字节，明显不完整，拒绝发布"
+
+ASSET_COUNT=$(find dist/_astro -type f 2>/dev/null | wc -l | tr -d ' ')
+[[ "$ASSET_COUNT" -ge 50 ]] || \
+  die "dist/_astro 只有 ${ASSET_COUNT} 个文件，产物不完整，拒绝发布"
+ok "产物门禁通过（index ${INDEX_BYTES} 字节，_astro ${ASSET_COUNT} 个文件）"
 
 # ─────────────────────────────────────────────────────────────
 log "2/4 校验产物"
@@ -97,7 +110,14 @@ else
   # 模式 1：在服务器上就地发布
   [[ -d "$SITE_ROOT" ]] || die "站点目录不存在：$SITE_ROOT（请先跑 deploy/server-setup.sh）"
 
-  # 用 --delete 清掉旧版本残留的哈希文件，避免目录无限膨胀
+  # 用 --delete 清掉旧版本残留的哈希文件，避免目录无限膨胀。
+  # 先把当前线上内容备份一份（只留最近一次），万一新产物有问题可以立刻回滚。
+  PREV="${SITE_ROOT}.prev"
+  if [[ -d "$SITE_ROOT" ]] && [[ -n "$(ls -A "$SITE_ROOT" 2>/dev/null)" ]]; then
+    rm -rf "$PREV"
+    cp -a "$SITE_ROOT" "$PREV"
+    ok "已备份上一版到 $(basename "$PREV")"
+  fi
   rsync -a --delete dist/ "$SITE_ROOT/"
   chmod -R a+rX "$SITE_ROOT"
   ok "已同步到 $SITE_ROOT"
@@ -121,5 +141,6 @@ log "4/4 完成"
 printf '\n\033[1;32m═══ 发布成功 ═══\033[0m\n'
 if [[ -z "$REMOTE" ]]; then
   echo "  自检：curl -sI https://laoma-apples.site/ | head -1"
+  echo "  回滚上一版：rm -rf ${SITE_ROOT} && mv ${SITE_ROOT}.prev ${SITE_ROOT}"
 fi
 echo
