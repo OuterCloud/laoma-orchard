@@ -79,8 +79,10 @@ fi
 # ─────────────────────────────────────────────────────────────
 log "3/7 追加 Nginx 站点配置"
 # ─────────────────────────────────────────────────────────────
+# 第一阶段只装 HTTP 块。原因：nginx 启动时要求 ssl_certificate 指向的文件
+# 必须已存在，若此时就写入 443 块，容器会因证书缺失而启动失败（restart 循环）。
 python3 "${REPO_DIR}/deploy/patch_nginx.py" \
-  "$NGINX_CONF" "${REPO_DIR}/deploy/nginx-laoma.conf"
+  "$NGINX_CONF" "${REPO_DIR}/deploy/nginx-laoma-http.conf"
 ok "现有配置未被修改，仅追加"
 
 # ─────────────────────────────────────────────────────────────
@@ -139,8 +141,18 @@ else
     cp "${LIVE}/privkey.pem"   "${SSL_DIR}/laoma-privkey.pem"
     chmod 644 "${SSL_DIR}/laoma-fullchain.pem"
     chmod 600 "${SSL_DIR}/laoma-privkey.pem"
-    docker exec "$NGINX_CONTAINER" nginx -s reload
-    ok "证书已安装并重载"
+    # 证书就位后升级为 HTTP+HTTPS 配置
+    python3 "${REPO_DIR}/deploy/patch_nginx.py" \
+      "$NGINX_CONF" "${REPO_DIR}/deploy/nginx-laoma-https.conf"
+    if docker exec "$NGINX_CONTAINER" nginx -t >/dev/null 2>&1; then
+      docker exec "$NGINX_CONTAINER" nginx -s reload
+      ok "证书已安装，HTTPS 已启用"
+    else
+      warn "HTTPS 配置校验未通过，回退为仅 HTTP"
+      python3 "${REPO_DIR}/deploy/patch_nginx.py" \
+        "$NGINX_CONF" "${REPO_DIR}/deploy/nginx-laoma-http.conf"
+      docker exec "$NGINX_CONTAINER" nginx -s reload || true
+    fi
   else
     warn "证书申请失败。常见原因：DNS 尚未解析到本机、或防火墙未放行 80 端口"
     warn "处理好后重新执行本脚本即可（幂等，不会重复改动）"

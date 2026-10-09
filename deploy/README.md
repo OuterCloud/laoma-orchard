@@ -21,10 +21,10 @@
 | --- | --- |
 | `server-setup.sh` | **一次性初始化**。追加 Nginx 配置、合并 compose 挂载、申请证书、注册 systemd |
 | `publish.sh` | **日常发布**。构建 → 校验 → 同步静态文件 → 重载 Nginx |
-| `nginx-laoma.conf` | 站点 server 块片段，由 `patch_nginx.py` 插入现有 nginx.conf |
+| `nginx-laoma-http.conf` | 第一阶段片段：仅 80 端口（用于签发证书前） |
+| `nginx-laoma-https.conf` | 第二阶段片段：HTTP + HTTPS，证书就位后替换上一份 |
 | `patch_nginx.py` | 幂等地把片段插入 `http {}` 内，不改动任何既有行 |
 | `merge_compose.py` | 生成「原 compose + 两个只读挂载」的最终文件，不动原文件 |
-| `nginx.conf` | 单机独立部署用的完整配置（服务器没有现成 Nginx 时用这个） |
 
 ## 部署到已有业务的服务器
 
