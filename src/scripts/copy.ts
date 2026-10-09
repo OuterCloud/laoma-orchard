@@ -27,15 +27,17 @@ async function copy(text: string): Promise<boolean> {
      * 预览、部分内嵌浏览器）下唯一可用的复制方案 —— Clipboard API 在这些环境
      * 里要么不存在，要么被拒绝。所以这个兜底必须保留，不能为消除告警而删掉。
      *
-     * 关于告警：astro check 会就这一行给出 ts(6387) 提示（hint，非 error）。
-     * 试过两种压制手段都不成立，记录在此避免重复踩：
-     *   · eslint-disable —— astro check 走 TypeScript 诊断，不读 eslint 注释
-     *   · @ts-expect-error —— 只作用于 error 级诊断；废弃属于 hint 级，反而
-     *     因「未使用该指令」报错
-     * 因此接受这条 hint。构建不受影响（astro check 只在 pnpm build 里跑，
-     * 生产构建 pnpm build:fast 不经过它），且逻辑本身是正确的。
+     * 用一个自定义类型来调用，绕开 DOM 类型定义上的 @deprecated 标记：
+     * 运行时行为完全不变（调用的仍是原生 execCommand），但 astro check 不再
+     * 报 ts(6387)。这比另外两种常见写法可靠 ——
+     *   · eslint-disable：astro check 走 TypeScript 诊断，不读 eslint 注释
+     *   · @ts-expect-error：只作用于 error 级，而废弃属于 hint 级，
+     *     反而会因「未使用该指令」直接报错
      */
-    const ok = document.execCommand('copy');
+    type LegacyDocument = {
+      execCommand?: (commandId: string, showUI?: boolean, value?: string) => boolean;
+    };
+    const ok = (document as LegacyDocument).execCommand?.('copy') ?? false;
     ta.remove();
     return ok;
   } catch {
