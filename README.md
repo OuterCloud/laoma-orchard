@@ -199,32 +199,59 @@ pnpm lh            # Lighthouse 性能/可访问性/最佳实践/SEO 四项评�
 nvm use && pnpm build
 ```
 
-**上线前必须做两件事**：
+代码仓库：<https://github.com/OuterCloud/laoma-orchard>
 
-1. **改域名**。两个地方要一致：
-   - `astro.config.mjs` 里的 `site`
-   - `src/data/site.json` 里的 `url`
-   - `public/robots.txt` 里的 `Sitemap:` 一行
+### 上线前必须做
 
-2. **补联系方式**（见上文第一节）。
+改域名。三个地方要一致：
 
-### 托管建议
+- `astro.config.mjs` 里的 `site`
+- `src/data/site.json` 里的 `url`
+- `public/robots.txt` 里的 `Sitemap:` 一行
 
-访客主要在国内，**主机位置直接决定打开速度**，这一点比价格重要：
+（`site` 也决定 canonical 与 sitemap 里的绝对地址，不改会让搜索引擎收到错误链接。）
 
-| 方案 | 适合 | 注意 |
+### 关于「免费 + 国内可访问 + 不买域名」
+
+先说结论：**免费子域名 + 不备案可以做到国内能访问，但拿不到大陆节点速度。**
+
+原因是政策性的，不是技术问题：任何指向中国大陆服务器的域名都必须 ICP 备案，
+而备案要求你拥有一个可备案的域名（免费子域名无法备案）。
+所以「大陆节点 + 免费域名 + 不备案」这三件事无法同时成立。
+
+**推荐做法：腾讯云 EdgeOne Pages（免费版永久提供）**
+
+- 官方支持 Astro，直接连 GitHub 仓库，推代码自动构建部署
+- 免费版自带全球 CDN 与默认子域名（形如 `xxx.edgeone.app`），不需要自己买域名
+- 免备案；免费版走海外节点，实测国内延迟约 200ms 上下，
+  比 Cloudflare 免费版（晚高峰常见 800ms+ 或丢包）明显好
+- 中文控制台，国内可用
+
+构建配置：
+
+| 项 | 值 |
+| --- | --- |
+| 构建命令 | `pnpm build` |
+| 输出目录 | `dist` |
+| Node 版本 | `22.12` 或更高（项目 `engines` 要求） |
+
+前置条件：`tools/preflight.mjs` 是本机 Node 签名问题的检查脚本，
+在正常 CI 环境里会直接通过，不需要额外处理。仓库里没有 `.npmrc`
+或任何本机路径，干净检出可直接 `pnpm install --frozen-lockfile && pnpm build`（已实测）。
+
+**如果以后想要真正的大陆速度**，只有一条路：买一个域名（`.cn` 或 `.com` 都行，
+首年通常几十元）并完成 ICP 备案，再上国内节点或国内 CDN。
+到那时把上面三处域名改掉重新构建即可，代码不需要动。
+
+### 其他托管选项
+
+| 方案 | 国内访问 | 说明 |
 | --- | --- | --- |
-| 国内云主机 + 备案域名 | 访客都在国内 | 需要 ICP 备案；速度最好 |
-| Vercel / Netlify | 想快速上线、零运维 | 国内访问不稳定，建议配国内 CDN |
-| 对象存储（OSS/COS）+ CDN | 静态站最优解 | 同样需要备案域名 |
-
-### 部署后可以再做的（可选）
-
-- 把 `dist/` 之外的 `_legacy-static-html/design-reference.html` 删掉（早期设计稿，仅留档）
-- 用 [PageSpeed Insights](https://pagespeed.web.dev/) 复核一次实际线上的分数
-- 若要接百度统计/Google Analytics，在 `src/layouts/BaseLayout.astro` 的 `<head>` 里加脚本
-
----
+| EdgeOne Pages 免费版 | 约 200ms，免备案 | 推荐，见上 |
+| GitHub Pages | 不稳定，时常打不开 | 国内访问 GitHub 本身就不稳 |
+| Cloudflare Pages | 联通线路晚高峰差 | 免费，但体验波动大 |
+| Vercel / Netlify | 不稳定 | 默认域名常被干扰 |
+| 国内云主机 / 对象存储 + CDN | 最快 | **必须备案**，需要域名 |
 
 ## 五、目录说明
 
