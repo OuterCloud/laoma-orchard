@@ -190,10 +190,17 @@ else
     for _ in $(seq 1 15); do ss -lnt 2>/dev/null | grep -q ':80 ' || break; sleep 1; done
     ok "80 端口已释放"
 
-    if certbot certonly --standalone \
+    # 显式判断退出码。certbot 是管道第一段，需用 PIPESTATUS[0] 才准确：
+    # 放进 if 条件里会因 set -e 被吸收，而 $? 又受 sed 影响。
+    set +e
+    certbot certonly --standalone \
         -d "$SITE_DOMAIN" -d "www.${SITE_DOMAIN}" \
-        "${EMAIL_ARGS[@]}" --agree-tos --non-interactive --keep-until-expiring \
-        2>&1 | sed 's/^/  /'; then
+        "${EMAIL_ARGS[@]}" --agree-tos --non-interactive --keep-until-expiring 2>&1 \
+        | sed 's/^/  /'
+    CERT_RC=${PIPESTATUS[0]}
+    set -e
+
+    if [[ "$CERT_RC" -eq 0 ]]; then
       LIVE="/etc/letsencrypt/live/${SITE_DOMAIN}"
       cp "${LIVE}/fullchain.pem" "${SSL_DIR}/laoma-fullchain.pem"
       cp "${LIVE}/privkey.pem"   "${SSL_DIR}/laoma-privkey.pem"
@@ -209,7 +216,9 @@ else
         warn "HTTPS 片段静态校验未通过，保持仅 HTTP"
       fi
     else
-      warn "证书申请失败。常见原因：DNS 未指向本机、或 80 端口被占用"
+      warn "证书申请失败（certbot 退出码 $CERT_RC）。常见原因："
+      warn "  · DNS 未指向本机：dig +short ${SITE_DOMAIN}"
+      warn "  · 80 端口被占用或防火墙未放行"
       warn "容器会被自动恢复，站点不受持续影响；处理后可重跑本脚本"
     fi
 

@@ -107,12 +107,18 @@ else
 fi
 
 CERT_OK=0
-if certbot certonly --standalone \\
-    -d "$EXISTING_DOMAIN" \\
-    "${EMAIL_ARGS[@]}" --agree-tos --non-interactive --keep-until-expiring \\
-    2>&1 | sed 's/^/  /'; then
-  CERT_OK=1
-fi
+  # 显式判断 certbot 的退出码，而不是把它放进 if 的管道条件里。
+  # 原因：certbot 是管道的第一段，需要 PIPESTATUS[0] 才能准确取到它的状态。
+  #   · 放进 if 条件 —— 条件语句会吸收 set -e，失败被当作正常分支
+  #   · 用 $? —— 赋值动作会把 PIPESTATUS 冲掉，拿到的可能不是 certbot 的状态
+  # 所以必须紧接在管道之后读 PIPESTATUS[0]，中间不能插入其它命令。
+set +e
+certbot certonly --standalone \
+    -d "$EXISTING_DOMAIN" \
+    "${EMAIL_ARGS[@]}" --agree-tos --non-interactive --keep-until-expiring 2>&1 \
+    | sed 's/^/  /'
+CERT_OK=${PIPESTATUS[0]}
+set -e
 
 if [[ "$CERT_OK" != "1" ]]; then
   warn "证书申请失败。常见原因："
@@ -141,7 +147,7 @@ cat > "$HOOK" <<EOF
 # ${EXISTING_DOMAIN} 续期后同步证书并重载容器内 nginx
 cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/fullchain.pem ${SSL_DIR}/fullchain.pem
 cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/privkey.pem   ${SSL_DIR}/privkey.pem
-docker compose -f ${COMPOSE_FILE} up -d nginx >/dev/null 2>&1 || \\
+docker compose -f ${COMPOSE_FILE} up -d nginx >/dev/null 2>&1 || \
   docker start ${NGINX_CONTAINER} >/dev/null 2>&1 || true
 sleep 1
 docker exec ${NGINX_CONTAINER} nginx -s reload || true
@@ -153,7 +159,7 @@ mkdir -p /etc/letsencrypt/renewal-hooks/pre
 cat > /etc/letsencrypt/renewal-hooks/pre/laoma-fixcert-stop.sh <<EOF
 #!/bin/sh
 # 续期前腾出 80 端口；deploy 钩子负责再拉起来
-docker compose -f ${COMPOSE_FILE} stop nginx >/dev/null 2>&1 || \\
+docker compose -f ${COMPOSE_FILE} stop nginx >/dev/null 2>&1 || \
   docker stop ${NGINX_CONTAINER} >/dev/null 2>&1 || true
 EOF
 chmod +x /etc/letsencrypt/renewal-hooks/pre/laoma-fixcert-stop.sh
