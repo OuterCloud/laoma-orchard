@@ -159,7 +159,7 @@ SEO 与 Lighthouse 表现最好；比 Next.js 承担更少的运行时负担，
 ## 三、本地运行
 
 ```bash
-nvm use            # 读取 .nvmrc，切到 Node 24
+nvm use 24         # 或任意 ≥22.12 的版本；仓库不再带 .nvmrc（原因见下）
 pnpm install
 pnpm dev           # 开发服务器（热更新）
 pnpm build         # 类型检查 + 构建到 dist/
@@ -178,7 +178,7 @@ pnpm lh            # Lighthouse 性能/可访问性/最佳实践/SEO 四项评�
 `pnpm a11y` 的对比度检测按**真实渲染像素**判断，能覆盖「白字压在照片上」这类
 无法从 CSS 推算的情况；元素自身背景不透明时则直接用计算色，保证结论确定。
 
-### ⚠️ Node 版本很关键
+### ⚠️ Node 版本很关键（仅限本机）
 
 本机有两个 Node，**只有 nvm 的那个能构建**：
 
@@ -188,6 +188,13 @@ pnpm lh            # Lighthouse 性能/可访问性/最佳实践/SEO 四项评�
   加载时会报 `ERR_DLOPEN_FAILED` / `different Team IDs`。
 
 `pnpm build` 已内置前置检查（`tools/preflight.mjs`），会直接告诉你该用哪个 Node。
+这项检查只在 macOS 上有意义，云构建环境会直接通过。
+
+> **仓库里刻意不放 `.nvmrc`。** 它会让云构建平台去下载指定版本，
+> 而平台预装的版本是固定几个（EdgeOne 为 14.21.3 / 16.20.2 / 18.20.4 /
+> 20.18.0 / 22.11.0 / 22.17.1 / 24.5.0）。写了 `.nvmrc` 反而会去下载
+> 一个平台没有的版本并因此失败。项目 `engines` 只要求 `>=22.12.0`，
+> 平台的 22.17.1 或 24.5.0 都满足。
 
 ---
 
@@ -235,9 +242,22 @@ nvm use && pnpm build
 | 输出目录 | `dist` |
 | Node 版本 | `22.12` 或更高（项目 `engines` 要求） |
 
-前置条件：`tools/preflight.mjs` 是本机 Node 签名问题的检查脚本，
-在正常 CI 环境里会直接通过，不需要额外处理。仓库里没有 `.npmrc`
-或任何本机路径，干净检出可直接 `pnpm install --frozen-lockfile && pnpm build`（已实测）。
+**已实测的构建兼容性**（模拟平台环境，干净检出后执行）：
+
+| 检查 | 结果 |
+| --- | --- |
+| `pnpm install --frozen-lockfile`（pnpm 9.15.9） | exit 0 |
+| `pnpm build`（pnpm 9） | exit 0，产出 dist/ |
+| 仓库内本机路径 / `.npmrc` | 无 |
+| `.nvmrc` | **已移除**，改用平台预装 Node |
+
+两点容易踩的坑，都已处理：
+
+1. **不要放 `.nvmrc`。** 平台会尝试下载它指定的版本；若该版本不在平台预装列表里，
+   构建会在「安装依赖」阶段直接失败（`Switching error: Failed to switch to Node.js …`）。
+   本项目用平台预装的 22.17.1 或 24.5.0 都满足 `engines`。
+2. **不要保留空的 `pnpm-workspace.yaml`。** 有些 pnpm 版本会因缺少 `packages`
+   字段而报 `packages field missing or empty`。本项目是单包，已删除该文件。
 
 **如果以后想要真正的大陆速度**，只有一条路：买一个域名（`.cn` 或 `.com` 都行，
 首年通常几十元）并完成 ICP 备案，再上国内节点或国内 CDN。
