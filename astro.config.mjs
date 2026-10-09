@@ -7,7 +7,12 @@ import sitemap from '@astrojs/sitemap';
  * 改站点域名只需改这一处（与 src/data/site.json 的 url 保持一致）。
  */
 export default defineConfig({
-  site: 'https://laoma-orchard.example.com',
+  /*
+   * ★ 站点域名：全站唯一的定义处。
+   * canonical、og:url、JSON-LD、sitemap、robots.txt 都从这里派生。
+   * 换域名只改这一行（或用环境变量 PUBLIC_SITE_URL 覆盖，便于在部署平台直接配置）。
+   */
+  site: process.env.PUBLIC_SITE_URL || 'https://laoma-orchard.example.com',
 
   // v7 默认 compressHTML:'jsx' 会移除行内元素之间的空白，中文排版会出现文字粘连，
   // 因此显式设回 true（保留空白）。

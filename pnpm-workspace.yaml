@@ -1,0 +1,12 @@
+# 单包项目。这个文件存在的唯一目的是声明下面这条豁免规则。
+#
+# 背景：pnpm 11 默认拒绝安装「发布不足若干天」的包，本项目直接依赖的
+# astro@7.3.8 发布时间较近，会被这条策略拦下（ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION）。
+# pnpm 会把豁免规则写进这个文件，但默认生成的版本缺少 packages 字段，
+# 导致 pnpm 9（云构建平台使用的版本）报 "packages field missing or empty"。
+# 因此显式补上 packages，让 pnpm 9 与 pnpm 11 都能正常工作。
+packages:
+  - '.'
+
+minimumReleaseAgeExclude:
+  - astro@7.3.8

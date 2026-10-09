@@ -5,7 +5,7 @@
     "name": "老马苹果园",
     "shortName": "老马苹果园",
     "tagline": "一颗一颗手套袋，整个生长季不打一滴农药",
-    "url": "https://laoma-orchard.example.com",
+    "url": "",
     "place": {
       "province": "山东省",
       "city": "聊城市",
@@ -96,6 +96,7 @@
         "label": "发货",
         "value": "现摘现发"
       }
-    ]
+    ],
+    "_url_note": "留空即可：真正的站点地址由 astro.config.mjs 的 site 决定（见 src/lib/site.ts 的 siteOrigin）"
   }
 ]

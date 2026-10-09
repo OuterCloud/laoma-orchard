@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import type { SiteInfo } from '../lib/site';
+import { siteOrigin, type SiteInfo } from '../lib/site';
 
 interface Props {
   site: SiteInfo;
@@ -9,7 +9,9 @@ interface Props {
 }
 
 const { site, title, description } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.site ?? site.url).href;
+// 站点源统一取 astro.config 的 site；改域名只需改那一处
+const origin = siteOrigin(Astro.site?.origin);
+const canonical = new URL(Astro.url.pathname, origin).href;
 
 /** 结构化数据：让搜索引擎理解这是一家真实的果园，而非普通网页 */
 const jsonLd = {
@@ -17,19 +19,19 @@ const jsonLd = {
   '@graph': [
     {
       '@type': 'WebSite',
-      '@id': `${site.url}/#website`,
+      '@id': `${origin}/#website`,
       name: site.name,
       description: site.tagline,
       inLanguage: 'zh-CN',
-      url: `${site.url}/`,
+      url: `${origin}/`,
     },
     {
       '@type': ['Farm', 'LocalBusiness'],
-      '@id': `${site.url}/#orchard`,
+      '@id': `${origin}/#orchard`,
       name: site.name,
       description,
-      url: `${site.url}/`,
-      image: new URL('/og-cover.jpg', site.url).href,
+      url: `${origin}/`,
+      image: `${origin}/og-cover.jpg`,
       priceRange: '面议',
       address: {
         '@type': 'PostalAddress',
@@ -84,7 +86,7 @@ const jsonLd = {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={new URL('/og-cover.jpg', site.url).href} />
+    <meta property="og:image" content={`${origin}/og-cover.jpg`} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />

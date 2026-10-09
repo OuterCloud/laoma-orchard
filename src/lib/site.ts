@@ -13,3 +13,19 @@ export async function getSite(): Promise<SiteInfo> {
   }
   return entry.data;
 }
+
+/**
+ * 站点源地址（scheme + host，无尾斜杠）。
+ *
+ * **改域名只需要改 astro.config.mjs 里的 `site` 一处。**
+ * canonical、og:url、JSON-LD、sitemap、robots.txt 全部从这里取，
+ * 不再各自维护一份 —— 之前域名散在 astro.config、site.json、robots.txt
+ * 三处，很容易改了一处忘了另一处，导致搜索引擎收到互相矛盾的地址。
+ *
+ * 也支持用环境变量 PUBLIC_SITE_URL 覆盖（部署平台可直接配置，无需改代码）。
+ */
+export function siteOrigin(fallback?: string): string {
+  const fromEnv = (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.trim();
+  const raw = fromEnv || fallback || 'http://localhost:4321';
+  return raw.replace(/\/+$/, '');
+}
