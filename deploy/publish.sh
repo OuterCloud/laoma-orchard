@@ -24,6 +24,7 @@ cd "$REPO_DIR"
 SITE_ROOT="${SITE_ROOT:-/home/admin/mizuno-ami-tiger/laoma-apples}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-mizuno-ami-tiger-nginx-1}"
 REMOTE="${1:-}"
+[[ "$REMOTE" == --no-build ]] && REMOTE=""
 
 log()  { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -32,7 +33,16 @@ die()  { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 # ─────────────────────────────────────────────────────────────
 log "1/4 构建"
 # ─────────────────────────────────────────────────────────────
-if command -v pnpm >/dev/null 2>&1; then
+# 支持跳过构建（部署已有产物时用）：
+#   ./deploy/publish.sh --no-build
+NO_BUILD=0
+for arg in "$@"; do
+  [[ "$arg" == "--no-build" ]] && NO_BUILD=1
+done
+
+if [[ "$NO_BUILD" == "1" ]]; then
+  printf '  跳过构建（--no-build）\n'
+elif command -v pnpm >/dev/null 2>&1; then
   pnpm build
 else
   # 服务器上可能只有 corepack，它能按 package.json 拉取正确的 pnpm
@@ -40,7 +50,7 @@ else
   corepack pnpm build
 fi
 
-[[ -f dist/index.html ]] || die "构建产物缺失 dist/index.html"
+[[ -f dist/index.html ]] || die "构建产物缺失 dist/index.html（若已有产物，加 --no-build）"
 
 # ─────────────────────────────────────────────────────────────
 log "2/4 校验产物"

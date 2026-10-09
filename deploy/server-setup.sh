@@ -169,9 +169,20 @@ if [[ -f "${REPO_DIR}/dist/index.html" ]]; then
   rsync -a --delete "${REPO_DIR}/dist/" "$SITE_ROOT/"
   chmod -R a+rX "$SITE_ROOT"
   ok "已从 dist/ 同步静态文件"
+elif command -v node >/dev/null 2>&1; then
+  # 服务器上已具备构建环境：直接构建（dist/ 在 .gitignore 里，克隆后不会有）
+  warn "没有现成产物，改为在服务器上构建…"
+  # 调用 publish.sh（它会构建、校验并同步到 SITE_ROOT；此处不递归回本脚本）
+  if (cd "$REPO_DIR" && ./deploy/publish.sh) 2>&1 | sed 's/^/  /'; then
+    ok "构建并发布完成"
+  else
+    warn "构建失败。请检查 Node 版本（需 >=22.12）后重跑本脚本"
+  fi
 else
-  warn "未找到 ${REPO_DIR}/dist/index.html，跳过"
-  warn "请先执行：./deploy/publish.sh  然后重跑本脚本"
+  warn "未找到 ${REPO_DIR}/dist/index.html，且未安装 Node，无法构建"
+  warn "两种做法："
+  warn "  1) 服务器装 Node 22+ 后重跑本脚本（推荐，之后能自动部署）"
+  warn "  2) 在本机执行：./deploy/publish.sh root@<公网IP>:${SITE_ROOT}"
 fi
 
 # ── 构建环境检查（服务器上要能构建，才谈得上「clone 后自动部署」）──

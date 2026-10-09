@@ -119,6 +119,26 @@ cd ~/laoma-orchard && git pull && ./deploy/publish.sh
 sudo certbot renew --dry-run
 ```
 
+## 修复已有站点的过期证书（可选）
+
+如果服务器上原有项目的 HTTPS 证书已过期，脚本主体不会处理它。用这个：
+
+```bash
+sudo EXISTING_DOMAIN=mizunoamitiger.me ./deploy/fix-existing-cert.sh
+```
+
+**为什么它和主流程用不同方式**：原项目的 Nginx 配置里，80 端口块是
+`server_name _;`（通配）且只做 301 跳转，没有 ACME 校验的 location。
+它同时是 80 端口的默认 server，所以对原域名的校验请求会被它接走并跳转到
+HTTPS，certbot 拿不到文件。因此这个脚本改用 `--standalone` 模式，
+**需要短暂停止 Nginx 容器约 10~30 秒**腾出 80 端口。
+
+脚本用 `trap` 保证：**无论申请成功与否，容器都会被重新拉起**，不会留下停服状态。
+证书仍有效时脚本直接退出，不做任何改动。
+
+> 我们自己的域名（laoma-apples.site）不受此限制 —— 它用精确 `server_name`
+> 匹配，优先于通配块，所以主流程的 webroot 方式可用，不需要停服务。
+
 ## 排障
 
 ```bash
