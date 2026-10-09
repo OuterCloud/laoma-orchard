@@ -210,7 +210,7 @@ nvm use && pnpm build
 
 ### 站点域名
 
-**已经配好了**，指向生产域名 `https://laoma-orchard.edgeone.dev`。
+**已经配好了**，指向正式域名 `https://laoma-apples.site`。
 
 canonical、og:url、JSON-LD、sitemap、robots.txt 全部从 `astro.config.mjs`
 的 `site` 一处派生，不存在改了一处忘另一处的问题。

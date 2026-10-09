@@ -13,7 +13,7 @@ export default defineConfig({
    * 换域名只改这一行，不需要改任何其它文件。
    * 也支持环境变量 PUBLIC_SITE_URL 覆盖，但默认值已可直接用于生产，无需配置。
    */
-  site: process.env.PUBLIC_SITE_URL || 'https://laoma-orchard.edgeone.dev',
+  site: process.env.PUBLIC_SITE_URL || 'https://laoma-apples.site',
 
   // v7 默认 compressHTML:'jsx' 会移除行内元素之间的空白，中文排版会出现文字粘连，
   // 因此显式设回 true（保留空白）。
