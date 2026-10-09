@@ -179,6 +179,7 @@ pnpm build         # 类型检查 + 构建到 dist/
 pnpm preview       # 预览构建产物
 pnpm verify        # 无头浏览器实测：截图 + 破图/报错/横向溢出/动效可见性
 pnpm a11y          # 无障碍审计：对比度/触控目标/标题层级/键盘操作
+pnpm labels        # 导航标签与区块 kicker 的一致性
 pnpm mobile        # 移动端审计：5 种手机尺寸 × 溢出/触控/字号/锚点/抽屉
 pnpm lh            # Lighthouse 性能/可访问性/最佳实践/SEO 四项评分
 ```

@@ -87,9 +87,17 @@ import orchardCanopy from '../assets/crops/wide-orchard-canopy.jpg';
     position: absolute;
     z-index: 2;
     left: var(--pad);
-    right: var(--pad);
     bottom: clamp(24px, 5vh, 56px);
-    max-width: min(560px, calc(100% - var(--pad) * 2));
+    /*
+     * 不要同时写 left 和 right —— 绝对定位下那等于「强制拉伸到两侧」，
+     * 再被 max-width 截断，卡片就会固定成一个宽度，而文字比它窄，
+     * 于是右侧留下一大片空白（实测 560px 的卡片里只有 351px 文字，空 177px）。
+     *
+     * 改为：不写 right，加 width: fit-content 让它按内容收缩，
+     * 再用 max-width 兜住上限，这样卡片宽度始终贴合文字。
+     */
+    width: fit-content;
+    max-width: min(34rem, calc(100% - var(--pad) * 2));
     padding: clamp(20px, 3vw, 30px) clamp(20px, 3vw, 32px);
     border-radius: var(--r-lg);
     background: rgba(18, 16, 13, 0.62);
@@ -102,10 +110,15 @@ import orchardCanopy from '../assets/crops/wide-orchard-canopy.jpg';
     font-family: var(--font-serif);
     font-size: clamp(19px, 2.4vw, 34px);
     line-height: 1.55;
-    max-width: 22ch;
     letter-spacing: 0.03em;
     /* 已有底衬，不再需要大范围阴影 */
     text-shadow: none;
+    /*
+     * 不再限制 max-width：文字宽度由外层 .feature__caption 的 max-width 决定。
+     * 之前这里用 22ch，但 ch 单位以「0」字形宽度为基准，对中文完全不适用
+     * （中文每个字都是全角），算出来的 351px 与卡片 560px 不匹配，
+     * 造成卡片右侧大片空白。
+     */
   }
   /*
    * 遮罩从中段就要开始变暗。
