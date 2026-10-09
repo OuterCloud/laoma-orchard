@@ -41,16 +41,46 @@
 git clone git@github.com:OuterCloud/laoma-orchard.git
 cd laoma-orchard
 
-# 2. 一次性初始化（先装好 Node 22+）
-sudo ./deploy/server-setup.sh
+# 2. 一次性初始化：一步搞定证书、Nginx、构建与发布
+sudo ./deploy/server-setup.sh --install-node
 
-# 邮箱是可选的，不填也能正常签发 HTTPS 证书。
-# Let's Encrypt 的到期提醒邮件服务已于 2025-06-26 停止，填了基本也收不到东西。
-# 想填就加：sudo ACME_EMAIL=you@example.com ./deploy/server-setup.sh
-
-# 3. 日常更新
+# 3. 日常更新（只有这一条）
 git pull && ./deploy/publish.sh
 ```
+
+### 脚本参数
+
+| 参数 | 作用 |
+| --- | --- |
+| `--install-node` | 缺少 Node 时自动安装（**默认不装**，只打印安装命令） |
+| `--yes` / `-y` | 不交互确认 |
+| `--help` | 查看用法 |
+
+**默认不擅自安装系统包**：这台服务器还在跑别的业务，装 Node 会改动系统环境，
+应由使用者决定，所以做成显式开关。不带 `--install-node` 时脚本会给出可直接
+复制的安装命令。
+
+邮箱是可选的，不填也能正常签发 HTTPS 证书。Let's Encrypt 的到期提醒邮件服务
+已于 2025-06-26 停止，填了基本也收不到东西。想填就加
+`sudo ACME_EMAIL=you@example.com ./deploy/server-setup.sh --install-node`
+
+### 如果不想在服务器上装 Node
+
+站点一年只更新两三次时，本机构建后推送更省事，服务器保持零改动：
+
+```bash
+./deploy/publish.sh root@<公网IP>:/home/admin/mizuno-ami-tiger/laoma-apples
+```
+
+### 关于服务中断
+
+申请证书用 `--standalone`，需要**短暂独占 80 端口**，因此会停止 Nginx 容器
+**约 10~30 秒**。脚本用 `trap` 保证无论成败都会把容器拉起。自动续期同样通过
+pre/deploy 钩子停容器再拉起，每 60 天一次。
+
+这是刻意的取舍：现有配置里 80 端口有 `server_name _;` 的块会把 ACME 校验请求
+301 掉，webroot 方式不可用；而声明 `default_server` 去抢默认位置会**破坏现有
+域名的访问**（本项目实际踩过这个坑，见下）。
 
 `server-setup.sh` 会打印还差什么（比如 Node 未安装、IP 未解析），
 **重复执行是安全的**——所有操作都幂等。

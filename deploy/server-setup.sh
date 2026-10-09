@@ -14,12 +14,28 @@
 #   3. 所有改动前先备份；每一步可重复执行（幂等）
 #   4. 现有配置用的是 server_name _（通配），我们用精确域名，不会抢请求
 #
+# 参数：
+#   --install-node   缺少 Node 时自动安装（默认**不装**，只给出安装命令）
+#   --yes            不交互确认，直接执行会短暂中断服务的步骤
+#
 # 可通过环境变量覆盖：
 #   SITE_DOMAIN   默认 laoma-apples.site
 #   ACME_EMAIL    证书通知邮箱（**可选**，不填也能签发；见 6/7 步说明）
 #   STACK_DIR     现有项目目录，默认 /home/admin/mizuno-ami-tiger
 
 set -euo pipefail
+
+# ── 参数解析 ──
+INSTALL_NODE=0
+ASSUME_YES=0
+for arg in "$@"; do
+  case "$arg" in
+    --install-node) INSTALL_NODE=1 ;;
+    --yes|-y)       ASSUME_YES=1 ;;
+    -h|--help)      sed -n '2,20p' "$0"; exit 0 ;;
+    *)              printf '未知参数：%s（支持 --install-node / --yes）\n' "$arg" >&2; exit 2 ;;
+  esac
+done
 
 SITE_DOMAIN="${SITE_DOMAIN:-laoma-apples.site}"
 STACK_DIR="${STACK_DIR:-/home/admin/mizuno-ami-tiger}"
@@ -40,7 +56,7 @@ die()  { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 [[ $EUID -eq 0 ]] || die "请用 root 执行：sudo ./deploy/server-setup.sh"
 
 # ─────────────────────────────────────────────────────────────
-log "0/7 检查前置条件"
+log "0/8 检查前置条件"
 # ─────────────────────────────────────────────────────────────
 [[ -f "$NGINX_CONF" ]] || die "找不到现有 nginx 配置：$NGINX_CONF（用 STACK_DIR=... 指定正确目录）"
 [[ -d "$SSL_DIR"   ]] || die "找不到证书目录：$SSL_DIR"
@@ -54,14 +70,14 @@ ok "现有容器：$NGINX_CONTAINER"
 [[ -n "$PUBLIC_IP" ]] && ok "本机公网 IP：$PUBLIC_IP"
 
 # ─────────────────────────────────────────────────────────────
-log "1/7 创建目录"
+log "1/8 创建目录"
 # ─────────────────────────────────────────────────────────────
 mkdir -p "$ACME_DIR" "$SITE_ROOT"
 ok "$ACME_DIR（证书校验用）"
 ok "$SITE_ROOT（静态文件）"
 
 # ─────────────────────────────────────────────────────────────
-log "2/7 备份现有配置"
+log "2/8 备份现有配置"
 # ─────────────────────────────────────────────────────────────
 STAMP="$(date +%Y%m%d-%H%M%S)"
 if ! ls "$STACK_DIR"/nginx/nginx.conf.bak-* >/dev/null 2>&1; then
@@ -77,7 +93,7 @@ if [[ -f "${STACK_DIR}/docker-compose.prod.yml" ]]; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-log "3/7 追加 Nginx 站点配置"
+log "3/8 追加 Nginx 站点配置"
 # ─────────────────────────────────────────────────────────────
 # 先把片段做静态校验，避免把语法错误写进正在服务的 nginx.conf。
 # 起因：曾把 default_server 误写成独立指令，直到服务器上 nginx -t 才暴露。
@@ -94,7 +110,7 @@ python3 "${REPO_DIR}/deploy/patch_nginx.py" \
 ok "现有配置未被修改，仅追加"
 
 # ─────────────────────────────────────────────────────────────
-log "4/7 生成合并后的 compose 文件"
+log "4/8 生成合并后的 compose 文件"
 # ─────────────────────────────────────────────────────────────
 # 合并逻辑放在 deploy/merge_compose.py（单独文件便于测试与维护）
 if ! python3 -c 'import yaml' 2>/dev/null; then
@@ -105,7 +121,7 @@ python3 "${REPO_DIR}/deploy/merge_compose.py" \
   "${STACK_DIR}/docker-compose.prod.yml" "$COMPOSE_MERGED" "$SITE_ROOT" "$ACME_DIR"
 
 # ─────────────────────────────────────────────────────────────
-log "5/7 应用挂载（原地重建 nginx 服务）"
+log "5/8 应用挂载（原地重建 nginx 服务）"
 # ─────────────────────────────────────────────────────────────
 cd "$STACK_DIR"
 docker compose -f "$COMPOSE_MERGED" up -d nginx 2>&1 | sed 's/^/  /'
@@ -120,7 +136,7 @@ ok "nginx 配置校验通过"
 docker exec "$NGINX_CONTAINER" nginx -s reload 2>&1 | sed 's/^/  /' || true
 
 # ─────────────────────────────────────────────────────────────
-log "6/7 申请 HTTPS 证书"
+log "6/8 申请 HTTPS 证书"
 # ─────────────────────────────────────────────────────────────
 # 为什么用 --standalone 而不是 webroot：
 #
@@ -232,48 +248,73 @@ EOF
 fi
 
 # ─────────────────────────────────────────────────────────────
-log "7/7 部署静态文件"
-# ─────────────────────────────────────────────────────────────
-if [[ -f "${REPO_DIR}/dist/index.html" ]]; then
-  rsync -a --delete "${REPO_DIR}/dist/" "$SITE_ROOT/"
-  chmod -R a+rX "$SITE_ROOT"
-  ok "已从 dist/ 同步静态文件"
-elif command -v node >/dev/null 2>&1; then
-  # 服务器上已具备构建环境：直接构建（dist/ 在 .gitignore 里，克隆后不会有）
-  warn "没有现成产物，改为在服务器上构建…"
-  # 调用 publish.sh（它会构建、校验并同步到 SITE_ROOT；此处不递归回本脚本）
-  if (cd "$REPO_DIR" && ./deploy/publish.sh) 2>&1 | sed 's/^/  /'; then
-    ok "构建并发布完成"
-  else
-    warn "构建失败。请检查 Node 版本（需 >=22.12）后重跑本脚本"
-  fi
-else
-  warn "未找到 ${REPO_DIR}/dist/index.html，且未安装 Node，无法构建"
-  warn "两种做法："
-  warn "  1) 服务器装 Node 22+ 后重跑本脚本（推荐，之后能自动部署）"
-  warn "  2) 在本机执行：./deploy/publish.sh root@<公网IP>:${SITE_ROOT}"
-fi
+# ── 构建环境：检测、按需安装、然后构建 ──
+# 默认只检测并给出命令，**不擅自安装系统包** —— 这台服务器还在跑别的业务，
+# 装 Node 属于改动系统环境，应由使用者决定。
+log "7/8 准备构建环境"
 
-# ── 构建环境检查（服务器上要能构建，才谈得上「clone 后自动部署」）──
-log "7.5/7 检查构建环境"
+need_node=0
 if command -v node >/dev/null 2>&1; then
   NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
   if [[ "$NODE_MAJOR" -ge 22 ]]; then
     ok "Node $(node -v) 满足要求（>=22.12）"
   else
-    warn "Node $(node -v) 版本过低，项目要求 >=22.12"
-    warn "升级：curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs"
+    warn "Node $(node -v) 版本过低（需 >=22.12）"
+    need_node=1
   fi
-  command -v pnpm >/dev/null 2>&1 && ok "pnpm $(pnpm -v)" || {
-    warn "未安装 pnpm，尝试用 corepack 启用"
+else
+  warn "未安装 Node.js"
+  need_node=1
+fi
+
+if [[ "$need_node" == "1" ]]; then
+  if [[ "$INSTALL_NODE" == "1" ]]; then
+    warn "--install-node 已指定，开始安装 Node 22（会改动系统包）"
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>&1 | tail -3 | sed 's/^/  /'
+    apt-get install -y nodejs >/dev/null
+    ok "Node 已安装：$(node -v)"
+  else
+    echo
+    warn "跳过在服务器上构建。两种做法："
+    echo "    1) 服务器装 Node 后本脚本可自动构建（一次性）："
+    echo "         curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -"
+    echo "         sudo apt-get install -y nodejs"
+    echo "         sudo corepack enable && sudo corepack prepare pnpm@latest --activate"
+    echo "       然后重跑：sudo ./deploy/server-setup.sh"
+    echo "       或直接让脚本代装：sudo ./deploy/server-setup.sh --install-node"
+    echo "    2) 不改服务器，在本机构建后推送（推荐给更新不频繁的站点）："
+    echo "         ./deploy/publish.sh root@<公网IP>:${SITE_ROOT}"
+    echo
+  fi
+fi
+
+# pnpm：优先 corepack（Node 自带），它是按 package.json 里声明的版本拉取
+if command -v node >/dev/null 2>&1; then
+  if ! command -v pnpm >/dev/null 2>&1; then
     corepack enable >/dev/null 2>&1 && corepack prepare pnpm@latest --activate >/dev/null 2>&1 \
       && ok "已通过 corepack 启用 pnpm" \
-      || warn "请手动安装：npm install -g pnpm"
-  }
+      || warn "pnpm 不可用，请手动安装：npm install -g pnpm"
+  else
+    ok "pnpm $(pnpm -v)"
+  fi
+fi
+
+log "8/8 部署静态文件并构建"
+# ─────────────────────────────────────────────────────────────
+# 统一在这里构建 + 发布：调用 deploy/publish.sh，它会
+#   构建 → 校验产物（无占位域名、_astro 全部带哈希）→ rsync 同步 → 重载 Nginx
+# 若服务器没有构建环境，publish.sh 会失败，此时退回「本机构建后推送」的提示。
+# ─────────────────────────────────────────────────────────────
+if [[ -x "${REPO_DIR}/deploy/publish.sh" ]]; then
+  if (cd "$REPO_DIR" && ./deploy/publish.sh) 2>&1 | sed 's/^/  /'; then
+    ok "构建并发布完成"
+  else
+    warn "构建或发布失败。检查上方输出；常见原因是 Node 缺失或版本过低"
+    warn "本机构建后推送（不改服务器环境）："
+    warn "  ./deploy/publish.sh root@<公网IP>:${SITE_ROOT}"
+  fi
 else
-  warn "未安装 Node.js —— 服务器上无法构建"
-  warn "安装（Ubuntu）：curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs"
-  warn "装好后重新执行本脚本即可"
+  warn "找不到 ${REPO_DIR}/deploy/publish.sh，跳过发布"
 fi
 
 # systemd 单元：保证宿主机重启后容器自动拉起（compose 里已有 restart: always，
