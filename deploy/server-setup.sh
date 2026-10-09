@@ -269,19 +269,17 @@ fi
 
 if [[ "$need_node" == "1" ]]; then
   if [[ "$INSTALL_NODE" == "1" ]]; then
-    warn "--install-node 已指定，开始安装 Node 22（会改动系统包）"
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 2>&1 | tail -3 | sed 's/^/  /'
-    apt-get install -y nodejs >/dev/null
-    ok "Node 已安装：$(node -v)"
+    warn "--install-node 已指定，开始安装 Node 22（官方预编译包，不用 apt）"
+    "${REPO_DIR}/deploy/bootstrap-node.sh" 2>&1 | sed 's/^/  /' || \
+      warn "Node 安装失败，可稍后单独重试：sudo ./deploy/bootstrap-node.sh"
+    hash -r 2>/dev/null || true
   else
     echo
     warn "跳过在服务器上构建。两种做法："
     echo "    1) 服务器装 Node 后本脚本可自动构建（一次性）："
-    echo "         curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -"
-    echo "         sudo apt-get install -y nodejs"
-    echo "         sudo corepack enable && sudo corepack prepare pnpm@latest --activate"
+    echo "         sudo ./deploy/bootstrap-node.sh          # 官方包，不用 apt"
     echo "       然后重跑：sudo ./deploy/server-setup.sh"
-    echo "       或直接让脚本代装：sudo ./deploy/server-setup.sh --install-node"
+    echo "       或一步到位：sudo ./deploy/server-setup.sh --install-node"
     echo "    2) 不改服务器，在本机构建后推送（推荐给更新不频繁的站点）："
     echo "         ./deploy/publish.sh root@<公网IP>:${SITE_ROOT}"
     echo
@@ -291,9 +289,15 @@ fi
 # pnpm：优先 corepack（Node 自带），它是按 package.json 里声明的版本拉取
 if command -v node >/dev/null 2>&1; then
   if ! command -v pnpm >/dev/null 2>&1; then
-    corepack enable >/dev/null 2>&1 && corepack prepare pnpm@latest --activate >/dev/null 2>&1 \
-      && ok "已通过 corepack 启用 pnpm" \
-      || warn "pnpm 不可用，请手动安装：npm install -g pnpm"
+    if command -v corepack >/dev/null 2>&1; then
+      corepack enable >/dev/null 2>&1 || true
+      corepack prepare pnpm@latest --activate >/dev/null 2>&1 \
+        && ok "已通过 corepack 启用 pnpm" \
+        || warn "corepack 激活 pnpm 失败，可执行：corepack prepare pnpm@latest --activate"
+    else
+      warn "pnpm 不可用，且当前 Node 未附带 corepack"
+      warn "请先装符合要求的 Node：sudo ./deploy/bootstrap-node.sh"
+    fi
   else
     ok "pnpm $(pnpm -v)"
   fi
