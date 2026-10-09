@@ -79,10 +79,18 @@ fi
 # ─────────────────────────────────────────────────────────────
 log "3/7 追加 Nginx 站点配置"
 # ─────────────────────────────────────────────────────────────
+# 先把片段做静态校验，避免把语法错误写进正在服务的 nginx.conf。
+# 起因：曾把 default_server 误写成独立指令，直到服务器上 nginx -t 才暴露。
+FRAG_HTTP="${REPO_DIR}/deploy/nginx-laoma-http.conf"
+if command -v python3 >/dev/null 2>&1; then
+  python3 "${REPO_DIR}/deploy/validate_nginx.py" "$FRAG_HTTP" || \
+    die "Nginx 片段静态校验未通过，已中止（未改动任何配置）"
+fi
+
 # 第一阶段只装 HTTP 块。原因：nginx 启动时要求 ssl_certificate 指向的文件
 # 必须已存在，若此时就写入 443 块，容器会因证书缺失而启动失败（restart 循环）。
 python3 "${REPO_DIR}/deploy/patch_nginx.py" \
-  "$NGINX_CONF" "${REPO_DIR}/deploy/nginx-laoma-http.conf"
+  "$NGINX_CONF" "$FRAG_HTTP"
 ok "现有配置未被修改，仅追加"
 
 # ─────────────────────────────────────────────────────────────
@@ -141,9 +149,12 @@ else
     cp "${LIVE}/privkey.pem"   "${SSL_DIR}/laoma-privkey.pem"
     chmod 644 "${SSL_DIR}/laoma-fullchain.pem"
     chmod 600 "${SSL_DIR}/laoma-privkey.pem"
-    # 证书就位后升级为 HTTP+HTTPS 配置
+    # 证书就位后升级为 HTTP+HTTPS 配置（同样先静态校验）
+    FRAG_HTTPS="${REPO_DIR}/deploy/nginx-laoma-https.conf"
+    python3 "${REPO_DIR}/deploy/validate_nginx.py" "$FRAG_HTTPS" || \
+      warn "HTTPS 片段静态校验未通过，保持仅 HTTP"
     python3 "${REPO_DIR}/deploy/patch_nginx.py" \
-      "$NGINX_CONF" "${REPO_DIR}/deploy/nginx-laoma-https.conf"
+      "$NGINX_CONF" "$FRAG_HTTPS"
     if docker exec "$NGINX_CONTAINER" nginx -t >/dev/null 2>&1; then
       docker exec "$NGINX_CONTAINER" nginx -s reload
       ok "证书已安装，HTTPS 已启用"
