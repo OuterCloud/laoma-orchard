@@ -23,11 +23,14 @@ cd "$REPO_DIR"
 
 SITE_ROOT="${SITE_ROOT:-/home/admin/mizuno-ami-tiger/laoma-apples}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-mizuno-ami-tiger-nginx-1}"
+# 发布后自检用的地址（可用 SITE_URL 覆盖）
+SITE_URL="${SITE_URL:-https://laoma-apples.site}"
 REMOTE="${1:-}"
 [[ "$REMOTE" == --no-build ]] && REMOTE=""
 
 log()  { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
+bad()  { printf '  \033[31m✗\033[0m %s\n' "$*"; }
 die()  { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
 # ─────────────────────────────────────────────────────────────
@@ -133,6 +136,76 @@ else
   else
     printf '  ! 未找到 Nginx（容器 %s 或宿主机），静态文件已就位但未重载\n' "$NGINX_CONTAINER"
   fi
+
+  # ───────────────────────────────────────────────────────────
+  # 发布后自检 —— 不通过就自动回滚
+  #
+  # 起因：曾出现「脚本报告发布成功，但线上实际是 404」，直到人工发现。
+  # 这类静默失败最危险，所以每次发布后主动验证，失败即用 .prev 回滚。
+  #
+  # 仅检查本机站点目录的 index.html（文件系统层面，确定性最高），
+  # 再去访问一次线上地址作为补充。网络不通不算发布失败，只提示。
+  # ───────────────────────────────────────────────────────────
+  log "3.5/4 发布后自检"
+
+  verify_site() {
+    local ok_all=1
+    if [[ ! -f "${SITE_ROOT}/index.html" ]]; then
+      bad "站点目录缺少 index.html"; ok_all=0
+    else
+      local sz; sz="$(wc -c < "${SITE_ROOT}/index.html" | tr -d ' ')"
+      if [[ "$sz" -lt 5000 ]]; then
+        bad "index.html 仅 ${sz} 字节，内容不完整"; ok_all=0
+      else
+        ok "index.html ${sz} 字节"
+      fi
+      # 页面里引用的 _astro 资源必须真实存在，否则线上会大面积 404
+      local missing=0 ref
+      for ref in $(grep -oE '/_astro/[A-Za-z0-9_.\-]+' "${SITE_ROOT}/index.html" | sort -u | head -40); do
+        [[ -f "${SITE_ROOT}${ref}" ]] || { missing=$((missing+1)); }
+      done
+      if [[ "$missing" -gt 0 ]]; then
+        bad "有 ${missing} 个页面引用的资源在站点目录中不存在"; ok_all=0
+      else
+        ok "页面引用的资源均存在"
+      fi
+    fi
+
+    # 线上可访问性（失败只提示，不触发回滚 —— 可能是网络/DNS 问题）
+    if command -v curl >/dev/null 2>&1; then
+      local code
+      code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$SITE_URL/" 2>/dev/null || echo 000)"
+      if [[ "$code" == "200" ]]; then
+        ok "线上返回 200（$SITE_URL）"
+      else
+        warn "线上返回 $code（$SITE_URL）—— 可能是网络或 DNS 问题，未因此回滚"
+      fi
+    fi
+
+    [[ "$ok_all" == "1" ]]
+  }
+
+  if verify_site; then
+    ok "自检通过"
+  else
+    bad "自检未通过，站点内容可能不完整"
+    if [[ -d "$PREV" ]]; then
+      warn "正在从 $(basename "$PREV") 回滚…"
+      rm -rf "$SITE_ROOT"
+      mv "$PREV" "$SITE_ROOT"
+      chmod -R a+rX "$SITE_ROOT"
+      if docker inspect "$NGINX_CONTAINER" >/dev/null 2>&1; then
+        docker exec "$NGINX_CONTAINER" nginx -s reload >/dev/null 2>&1 || true
+      fi
+      printf '\n\033[1;33m═══ 已回滚到上一版 ═══\033[0m\n'
+      printf '  线上站点保持为发布前的状态。请检查上方自检输出后重试。\n\n'
+      exit 1
+    else
+      bad "没有可用的备份（$(basename "$PREV") 不存在），无法回滚"
+      printf '\n  站点目录当前内容不完整，请检查 %s\n\n' "$SITE_ROOT"
+      exit 1
+    fi
+  fi
 fi
 
 # ─────────────────────────────────────────────────────────────
@@ -140,7 +213,6 @@ log "4/4 完成"
 # ─────────────────────────────────────────────────────────────
 printf '\n\033[1;32m═══ 发布成功 ═══\033[0m\n'
 if [[ -z "$REMOTE" ]]; then
-  echo "  自检：curl -sI https://laoma-apples.site/ | head -1"
-  echo "  回滚上一版：rm -rf ${SITE_ROOT} && mv ${SITE_ROOT}.prev ${SITE_ROOT}"
+  echo "  回滚上一版（如需）：rm -rf ${SITE_ROOT} && mv ${SITE_ROOT}.prev ${SITE_ROOT}"
 fi
 echo

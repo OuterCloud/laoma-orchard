@@ -152,9 +152,26 @@ mark {
 }
 .kicker > span {
   display: inline-grid; place-items: center;
-  width: 32px; height: 32px; border-radius: 50%;
+  /*
+   * 用「最小尺寸 + 药丸圆角」而不是固定 32×32 圆形。
+   *
+   * 起因：徽标里放的不只是 01/02 这类序号 —— Feature 区块放的是「果园全貌」
+   * 四个汉字（约 50px 宽）。固定 32px 装不下，文字折成两行并溢出圆圈。
+   * 实测 390 / 430 / 1440 三种宽度下 scrollHeight 均为 46 > 32，
+   * 也就是说桌面端同样存在这个问题，只是手机上更显眼。
+   *
+   * 改为 min-width/min-height 后：两个字符的序号仍呈正圆，
+   * 更长的文字自动撑成药丸形，不再折行、不再溢出。
+   */
+  min-width: 32px; min-height: 32px;
+  width: auto; height: auto;
+  padding-inline: 8px;
+  border-radius: 999px;
   border: 1px solid currentColor;
   font-size: 12.5px; letter-spacing: 0;
+  /* 徽标自身不换行，且不被 flex 压缩 */
+  white-space: nowrap;
+  flex: none;
 }
 .kicker--light { color: rgba(251, 247, 241, .95); }
 .kicker--light > span { border-color: rgba(251, 247, 241, .4); }
