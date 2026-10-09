@@ -46,7 +46,7 @@ die()  { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 log "1/5 检查现有证书"
 # ─────────────────────────────────────────────────────────────
 command -v openssl >/dev/null || { apt-get update -qq && apt-get install -y -qq openssl >/dev/null; }
-CURRENT="${SSL_DIR}/laoma-fullchain.pem"
+CURRENT="${SSL_DIR}/fullchain.pem"
 if [[ -f "$CURRENT" ]]; then
   END="$(openssl x509 -enddate -noout -in "$CURRENT" 2>/dev/null | cut -d= -f2 || true)"
   if [[ -n "$END" ]] && openssl x509 -checkend 604800 -noout -in "$CURRENT" >/dev/null 2>&1; then
@@ -139,11 +139,24 @@ HOOK="/etc/letsencrypt/renewal-hooks/deploy/sync-${EXISTING_DOMAIN//./-}.sh"
 cat > "$HOOK" <<EOF
 #!/bin/sh
 # ${EXISTING_DOMAIN} 续期后同步证书并重载容器内 nginx
-cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/fullchain.pem ${SSL_DIR}/laoma-fullchain.pem
-cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/privkey.pem   ${SSL_DIR}/laoma-privkey.pem
+cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/fullchain.pem ${SSL_DIR}/fullchain.pem
+cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/privkey.pem   ${SSL_DIR}/privkey.pem
+docker compose -f ${COMPOSE_FILE} up -d nginx >/dev/null 2>&1 || \\
+  docker start ${NGINX_CONTAINER} >/dev/null 2>&1 || true
+sleep 1
 docker exec ${NGINX_CONTAINER} nginx -s reload || true
 EOF
 chmod +x "$HOOK"
+
+# standalone 续期要独占 80 端口，续期前先停容器（与 server-setup.sh 的做法一致）
+mkdir -p /etc/letsencrypt/renewal-hooks/pre
+cat > /etc/letsencrypt/renewal-hooks/pre/laoma-fixcert-stop.sh <<EOF
+#!/bin/sh
+# 续期前腾出 80 端口；deploy 钩子负责再拉起来
+docker compose -f ${COMPOSE_FILE} stop nginx >/dev/null 2>&1 || \\
+  docker stop ${NGINX_CONTAINER} >/dev/null 2>&1 || true
+EOF
+chmod +x /etc/letsencrypt/renewal-hooks/pre/laoma-fixcert-stop.sh
 systemctl enable --now certbot.timer >/dev/null 2>&1 || true
 ok "已注册自动续期钩子：$(basename "$HOOK")"
 
