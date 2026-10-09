@@ -28,3 +28,7 @@ pnpm-debug.log*
 # 构建缓存
 .pnpm-store/
 .cache/
+
+# Python 缓存
+__pycache__/
+*.pyc

@@ -266,6 +266,23 @@ canonical、og:url、JSON-LD、sitemap、robots.txt 全部从 `astro.config.mjs`
 首年通常几十元）并完成 ICP 备案，再上国内节点或国内 CDN。
 到那时把上面三处域名改掉重新构建即可，代码不需要动。
 
+### 部署到自己的服务器（当前方案）
+
+站点部署在阿里云香港服务器上，与服务器上已有的 Docker 项目共存，**免备案**。
+
+```bash
+# 服务器上（一次性）
+git clone git@github.com:OuterCloud/laoma-orchard.git
+cd laoma-orchard
+sudo ACME_EMAIL=你的邮箱 ./deploy/server-setup.sh
+
+# 日常更新
+git pull && ./deploy/publish.sh
+```
+
+完整说明（含「如何保证不影响现有项目」的七条措施、排障、自动续期）见
+[`deploy/README.md`](deploy/README.md)。
+
 ### 其他托管选项
 
 | 方案 | 国内访问 | 说明 |
