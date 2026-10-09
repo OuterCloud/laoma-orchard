@@ -10,9 +10,10 @@ export default defineConfig({
   /*
    * ★ 站点域名：全站唯一的定义处。
    * canonical、og:url、JSON-LD、sitemap、robots.txt 都从这里派生。
-   * 换域名只改这一行（或用环境变量 PUBLIC_SITE_URL 覆盖，便于在部署平台直接配置）。
+   * 换域名只改这一行，不需要改任何其它文件。
+   * 也支持环境变量 PUBLIC_SITE_URL 覆盖，但默认值已可直接用于生产，无需配置。
    */
-  site: process.env.PUBLIC_SITE_URL || 'https://laoma-orchard.example.com',
+  site: process.env.PUBLIC_SITE_URL || 'https://laoma-orchard.edgeone.dev',
 
   // v7 默认 compressHTML:'jsx' 会移除行内元素之间的空白，中文排版会出现文字粘连，
   // 因此显式设回 true（保留空白）。

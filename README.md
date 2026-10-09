@@ -208,22 +208,17 @@ nvm use && pnpm build
 
 代码仓库：<https://github.com/OuterCloud/laoma-orchard>
 
-### 上线前必须做：设置站点域名
+### 站点域名
 
-**现在只需要改一处。** canonical、og:url、JSON-LD、sitemap、robots.txt
-全部从 `astro.config.mjs` 的 `site` 派生，不会再有改了一处忘了另一处的问题。
+**已经配好了**，指向生产域名 `https://laoma-orchard.edgeone.dev`。
 
-两种做法，选一个：
+canonical、og:url、JSON-LD、sitemap、robots.txt 全部从 `astro.config.mjs`
+的 `site` 一处派生，不存在改了一处忘另一处的问题。
 
-**做法 A（推荐，不用改代码）**：在部署平台加一个环境变量
+以后换域名，**只改 `astro.config.mjs` 里的 `site` 这一行**，重新构建即可。
+也支持用环境变量 `PUBLIC_SITE_URL` 覆盖，但默认值已可直接用于生产，不配也行。
 
-| 变量名 | 值 |
-| --- | --- |
-| `PUBLIC_SITE_URL` | 你的站点地址，例如 `https://xxx.edgeone.dev` |
-
-**做法 B**：直接改 `astro.config.mjs` 里的 `site` 默认值。
-
-> 不设置的后果：canonical 与 sitemap 会指向占位域名 `laoma-orchard.example.com`，
+> 注意：`site` 若停留在占位域名，canonical 会指向别处，
 > 等于告诉搜索引擎「这个页面在别处」，比不写 canonical 更糟。
 
 ### 关于「免费 + 国内可访问 + 不买域名」
