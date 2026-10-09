@@ -117,7 +117,9 @@ const tallFallback = heroTall.src;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    padding-top: calc(var(--nav-h) + 40px);
+    /* 导航栏是 fixed，这里要让开它的高度；固定 +40px 的额外呼吸空间
+       在矮屏上太贵（768 高时占 116px），改为随视口高度缩放 */
+    padding-top: calc(var(--nav-h) + clamp(2px, 3vh, 40px));
     overflow: hidden;
     background: #2a2620;
     isolation: isolate;
@@ -163,6 +165,26 @@ const tallFallback = heroTall.src;
       radial-gradient(115% 72% at 18% 80%, rgba(20, 18, 14, 0.42), transparent 60%);
   }
 
+  /*
+   * 首屏的垂直节奏。
+   *
+   * 原来四处间距是各自的魔数（26 / 34 / 40 / 50px），既不整齐也难以解释；
+   * 而且「按钮 → 数据条」那段用的是 .hero__content 的 padding-bottom ——
+   * 语义不对：那是容器内边距，却被当成段落间距使用。
+   *
+   * 现在统一成一条 5/6/7/8 的比例阶梯，由 --hero-step 驱动：
+   *   eyebrow → 主标题   步进 5
+   *   主标题  → 承诺语   步进 6（在 h1 内部）
+   *   承诺语  → 正文     步进 6
+   *   正文    → 按钮     步进 7
+   *   按钮    → 数据条   步进 8
+   *
+   * --hero-step 随视口高度缩放，矮屏自动收紧，保证首屏放满一屏
+   * （1366×768 这类常见笔记本高度也必须正好一屏）。
+   */
+  .hero {
+    --hero-step: clamp(3.4px, 1.15vh, 5.6px);
+  }
   .hero__content {
     position: relative;
     z-index: 2;
@@ -170,7 +192,6 @@ const tallFallback = heroTall.src;
     max-width: min(var(--wrap), 1100px);
     margin-inline: auto;
     padding-inline: var(--pad);
-    padding-bottom: clamp(30px, 5vh, 58px);
     color: var(--paper);
   }
 
@@ -184,7 +205,8 @@ const tallFallback = heroTall.src;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: rgba(251, 247, 241, 0.9);
-    margin-bottom: 26px;
+    /* 步进 5 */
+    margin-bottom: calc(var(--hero-step) * 5);
   }
   .hero__eyebrow .dot {
     width: 7px;
@@ -211,7 +233,14 @@ const tallFallback = heroTall.src;
     display: block;
   }
   .hero__title > span:first-child {
-    font-size: clamp(42px, 8.2vw, 116px);
+    /*
+     * 用 svh（视口高度）参与计算，而不是只按 vw。
+     * 起因：原为 clamp(42px, 8.2vw, 116px)，在 1366×768 这类「宽但不高」的
+     * 常见笔记本上算出 112px 的大标题，加上其余内容后首屏高 839px，
+     * 超出 768 视口 —— 首屏装不满一屏。
+     * 加入 svh 后矮屏自动收紧，宽屏仍可达 116px 上限。
+     */
+    font-size: clamp(38px, min(8.2vw, 12.8svh), 116px);
     line-height: 1.02;
     letter-spacing: 0.04em;
     text-shadow: 0 2px 40px rgba(0, 0, 0, 0.35);
@@ -220,7 +249,8 @@ const tallFallback = heroTall.src;
     width: clamp(56px, 8vw, 108px);
     height: 2px;
     background: var(--apple-soft);
-    margin: clamp(22px, 3.2vh, 34px) 0;
+    /* 步进 6（h1 内部：主标题与承诺语之间） */
+    margin: calc(var(--hero-step) * 6) 0;
   }
   .hero__promise {
     font-size: clamp(19px, 2.5vw, 34px);
@@ -231,8 +261,11 @@ const tallFallback = heroTall.src;
   }
 
   .hero__lede {
-    margin-top: clamp(22px, 3.4vh, 34px);
-    max-width: 46ch;
+    /* 步进 6 */
+    margin-top: calc(var(--hero-step) * 6);
+    /* 最宽 46ch 会让正文在窄屏折成三行，而「首屏放满一屏」是硬要求。
+       与手机端一致：矮屏优先保证标题与按钮可见。 */
+    max-width: 52ch;
     font-size: clamp(14.5px, 1.05vw, 17px);
     line-height: 1.95;
     color: rgba(251, 247, 241, 0.9);
@@ -242,7 +275,8 @@ const tallFallback = heroTall.src;
     display: flex;
     flex-wrap: wrap;
     gap: 14px;
-    margin-top: clamp(26px, 4vh, 40px);
+    /* 步进 7 */
+    margin-top: calc(var(--hero-step) * 7);
   }
   .btn {
     display: inline-flex;
@@ -286,7 +320,9 @@ const tallFallback = heroTall.src;
     position: relative;
     z-index: 2;
     width: 100%;
-    margin: 0;
+    /* 步进 8。这段间距原来写在 .hero__content 的 padding-bottom 上，
+       语义不对（容器内边距被当成段落间距用），移到此处 */
+    margin-top: calc(var(--hero-step) * 8);
     border-top: 1px solid rgba(251, 247, 241, 0.18);
     background: linear-gradient(180deg, rgba(20, 18, 14, 0.34), rgba(20, 18, 14, 0.52));
     backdrop-filter: blur(4px);
@@ -449,6 +485,48 @@ const tallFallback = heroTall.src;
     }
     .hero__facts > div:nth-child(odd) {
       border-left: 0;
+    }
+  }
+
+  /*
+   * 更矮的桌面视口（720 高，如 1280×720 / 1152×720）。
+   * 上面几档调完仍差 12~24px，这里再收一档：间距更紧、标题更小、
+   * 数据条内边距也更紧凑。范围限得较窄，避免影响正常高度。
+   */
+  @media (min-width: 861px) and (max-width: 1400px) and (max-height: 740px) {
+    .hero {
+      --hero-step: clamp(3px, 1vh, 5px);
+    }
+    .hero__title > span:first-child {
+      font-size: clamp(36px, min(7.6vw, 11.8svh), 116px);
+    }
+    .hero__facts > div {
+      padding: clamp(10px, 1.6vh, 16px) clamp(12px, 2vw, 24px);
+    }
+  }
+
+  /*
+   * 桌面矮屏（768 高之类的常见笔记本）微调。
+   * 正文里有一个 <br class="br-desk"> 强制断行，会让它固定占 3 行，
+   * 在矮屏上把首屏撑出视口。这里隐藏该断行，让文字自然折成两行。
+   */
+  @media (min-width: 861px) and (max-height: 820px) {
+    .hero__lede :global(.br-desk) {
+      display: none;
+    }
+  }
+
+  /*
+   * 平板竖屏（如 iPad 834×1112）。它落在移动端布局里，但屏幕高得多，
+   * 移动端那套 svh 系数会把标题、承诺语放大到刚好把数据条顶出视口。
+   * 这里给一个收敛值，保证「首屏放满一屏」仍成立。
+   */
+  @media (min-width: 700px) and (max-width: 860px) {
+    .hero__title > span:first-child {
+      font-size: clamp(30px, 7.2svh, 54px);
+    }
+    .hero__promise {
+      font-size: clamp(15px, 2.8svh, 24px);
     }
   }
 
