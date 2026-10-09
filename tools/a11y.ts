@@ -199,7 +199,6 @@ function worstContrast(
   textColor: [number, number, number],
   pixels: number[][]
 ): number {
-  const tl = lum(...textColor);
   let worst = Infinity;
   for (const p of pixels) {
     const r = ratio(textColor, [p[0]!, p[1]!, p[2]!]);
