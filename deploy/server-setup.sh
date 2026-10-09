@@ -240,14 +240,19 @@ EOF
 
   cat > /etc/letsencrypt/renewal-hooks/deploy/laoma-reload.sh <<EOF
 #!/bin/sh
-# 续期后同步证书、重启容器并重载
-LIVE=/etc/letsencrypt/live/${SITE_DOMAIN}
-[ -f "\$LIVE/fullchain.pem" ] && cp "\$LIVE/fullchain.pem" ${SSL_DIR}/laoma-fullchain.pem
-[ -f "\$LIVE/privkey.pem" ]   && cp "\$LIVE/privkey.pem"   ${SSL_DIR}/laoma-privkey.pem
-docker compose -f ${COMPOSE_MERGED} up -d nginx >/dev/null 2>&1 || \
-  docker start ${NGINX_CONTAINER} >/dev/null 2>&1 || true
+# ${SITE_DOMAIN} 续期后同步证书并重载 nginx。
+#
+# 关键：所有命令都以 `|| true` 结尾并显式 exit 0。
+# 教训：曾写成直接 `docker exec ... nginx -s reload`，而续期时 pre 钩子
+# 刚把容器停掉（standalone 需要独占 80 端口），reload 必然失败，
+# 钩子返回非 0 → certbot 整体返回非 0 → 调用方误判「证书申请失败」，
+# 尽管证书本身已成功签发。钩子失败不应等同于签发失败。
+cp /etc/letsencrypt/live/${SITE_DOMAIN}/fullchain.pem ${SSL_DIR}/laoma-fullchain.pem || true
+cp /etc/letsencrypt/live/${SITE_DOMAIN}/privkey.pem   ${SSL_DIR}/laoma-privkey.pem  || true
+docker compose -f ${COMPOSE_MERGED} up -d nginx >/dev/null 2>&1 || docker start ${NGINX_CONTAINER} >/dev/null 2>&1 || true
 sleep 1
 docker exec ${NGINX_CONTAINER} nginx -s reload >/dev/null 2>&1 || true
+exit 0
 EOF
 
   chmod +x /etc/letsencrypt/renewal-hooks/pre/laoma-stop-nginx.sh \

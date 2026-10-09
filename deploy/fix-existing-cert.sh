@@ -144,13 +144,21 @@ mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 HOOK="/etc/letsencrypt/renewal-hooks/deploy/sync-${EXISTING_DOMAIN//./-}.sh"
 cat > "$HOOK" <<EOF
 #!/bin/sh
-# ${EXISTING_DOMAIN} 续期后同步证书并重载容器内 nginx
-cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/fullchain.pem ${SSL_DIR}/fullchain.pem
-cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/privkey.pem   ${SSL_DIR}/privkey.pem
-docker compose -f ${COMPOSE_FILE} up -d nginx >/dev/null 2>&1 || \
-  docker start ${NGINX_CONTAINER} >/dev/null 2>&1 || true
+# ${EXISTING_DOMAIN} 续期后同步证书并重载 nginx。
+#
+# 关键：所有命令都以 `|| true` 结尾并显式 exit 0。
+# 教训：曾写成直接 `docker exec ... nginx -s reload`，而续期时 pre 钩子
+# 刚把容器停掉（standalone 需要独占 80 端口），reload 必然失败，
+# 钩子返回非 0 → certbot 整体返回非 0 → 调用方误判「证书申请失败」，
+# 尽管证书本身已成功签发。钩子失败不应等同于签发失败。
+cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/fullchain.pem ${SSL_DIR}/fullchain.pem || true
+cp /etc/letsencrypt/live/${EXISTING_DOMAIN}/privkey.pem   ${SSL_DIR}/privkey.pem  || true
+COMPOSE_USED=${COMPOSE_FILE}
+[ -f ${STACK_DIR}/docker-compose.effective.yml ] && COMPOSE_USED=${STACK_DIR}/docker-compose.effective.yml
+docker compose -f "$COMPOSE_USED" up -d nginx >/dev/null 2>&1 || docker start ${NGINX_CONTAINER} >/dev/null 2>&1 || true
 sleep 1
-docker exec ${NGINX_CONTAINER} nginx -s reload || true
+docker exec ${NGINX_CONTAINER} nginx -s reload >/dev/null 2>&1 || true
+exit 0
 EOF
 chmod +x "$HOOK"
 
