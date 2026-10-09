@@ -1,0 +1,68 @@
+---
+/**
+ * 联系卡片。
+ * 有值就正常展示（可一键复制）；没有值就显式显示「待补充」，
+ * 避免网站上出现看起来像真信息的假信息。
+ */
+interface Props {
+  label: string;
+  value?: string;
+  src?: ImageMetadata;
+  pending?: string;
+  copyable?: boolean;
+  hint?: string;
+  order?: number;
+  style?: string;
+}
+
+const {
+  label,
+  value = '',
+  src,
+  pending,
+  copyable = false,
+  hint = '',
+  order = 0,
+  style: styleProp = '',
+} = Astro.props;
+
+const hasValue = Boolean(value) || Boolean(src);
+const delay = styleProp || `--d:${order * 70}ms`;
+---
+
+{hasValue ? (
+  <div class="contact__card reveal" style={delay}>
+    <span class="contact__label">{label}</span>
+
+    {src && (
+      <div class="contact__qr">
+        {/*
+          二维码刻意不做压缩转换：它由纯色方块构成，最怕有损压缩产生的伪影，
+          而显示尺寸又直接决定能不能扫出来。直接用原始 PNG（880px），
+          既保证模块边缘干净，也保留了足够余量。
+        */}
+        <img src={src.src} width={src.width} height={src.height} alt={`${label}，微信扫一扫`} loading="lazy" decoding="async" />
+      </div>
+    )}
+
+    {value && (
+      <span class="contact__value">
+        <span data-copy-text>{value}</span>
+        {copyable && (
+          <button class="contact__copy" type="button" data-copy aria-label={`复制${label}：${value}`}>
+            复制
+          </button>
+        )}
+      </span>
+    )}
+
+    {hint && <span class="contact__hint">{hint}</span>}
+  </div>
+) : (
+  <div class="contact__card contact__card--pending reveal" style={delay}>
+    <span class="contact__label">{label}</span>
+    <span class="contact__value contact__value--pending">
+      <mark>【待填写：{pending}】</mark>
+    </span>
+  </div>
+)}

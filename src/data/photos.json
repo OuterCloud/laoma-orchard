@@ -1,0 +1,93 @@
+[
+  {
+    "id": "apple-cluster",
+    "order": 0,
+    "file": "apple-cluster.jpg",
+    "caption": "果袋下的一天",
+    "alt": "阳光穿过叶片，几颗苹果挤在一起，果袋上还带着水汽般的透光"
+  },
+  {
+    "id": "orchard-rows-far",
+    "order": 1,
+    "file": "orchard-rows-far.jpg",
+    "caption": "一眼望不到头",
+    "alt": "顺着田垄望出去，一片果树层层排开"
+  },
+  {
+    "id": "tree-bush",
+    "order": 2,
+    "file": "tree-bush.jpg",
+    "caption": "低枝上的果",
+    "alt": "果树长成一丛，果实低垂在枝条下端"
+  },
+  {
+    "id": "row-and-field",
+    "order": 3,
+    "file": "row-and-field.jpg",
+    "caption": "行间",
+    "alt": "果树行间，树后是邻近的农田"
+  },
+  {
+    "id": "many-on-tree",
+    "order": 4,
+    "file": "many-on-tree.jpg",
+    "caption": "从下到上",
+    "alt": "整棵树从下到上挂满了套袋的苹果"
+  },
+  {
+    "id": "orchard-sky",
+    "order": 5,
+    "file": "orchard-sky.jpg",
+    "caption": "风过枝头",
+    "alt": "以天空为背景的苹果树，枝头上的果袋被风吹得轻轻晃动"
+  },
+  {
+    "id": "tall-tree",
+    "order": 6,
+    "file": "tall-tree.jpg",
+    "caption": "水洗过的天",
+    "alt": "蓝天下一棵高大的苹果树，果实散布在整片树冠里"
+  },
+  {
+    "id": "single-apple",
+    "order": 7,
+    "file": "single-apple.jpg",
+    "caption": "一颗一颗",
+    "alt": "叶片之间一颗单独挂着的套袋苹果"
+  },
+  {
+    "id": "apple-close",
+    "order": 8,
+    "file": "apple-close.jpg",
+    "caption": "近看",
+    "alt": "近处几颗套袋苹果泛着粉红，背景是虚化的果园"
+  },
+  {
+    "id": "sun-through-leaves",
+    "order": 9,
+    "file": "sun-through-leaves.jpg",
+    "caption": "果园晨光",
+    "alt": "阳光穿过树冠，果园里满是斑驳的光影"
+  },
+  {
+    "id": "leafdetail",
+    "order": 10,
+    "file": "leafdetail.jpg",
+    "caption": "透光",
+    "alt": "逆光下透亮的苹果，可以看清果袋里的果形"
+  },
+  {
+    "id": "long-view",
+    "order": 11,
+    "file": "long-view.jpg",
+    "caption": "向阳一面",
+    "alt": "朝阳一面的果树，果实把枝条压得微微下垂，远处是连成一片的果园"
+  },
+  {
+    "id": "high-crop",
+    "order": 12,
+    "file": "high-crop.jpg",
+    "caption": "高处的果",
+    "alt": "高处枝头上的套袋果实，背景是晴朗的天"
+  }
+]

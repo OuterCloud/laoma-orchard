@@ -1,0 +1,44 @@
+---
+/**
+ * 果园标识：一颗带叶子的苹果。
+ * 纯 SVG，随 currentColor 变色，无额外请求。
+ */
+interface Props {
+  class?: string;
+  /** 叶子用固定的叶绿，其余部分跟随 currentColor */
+  leafColor?: string;
+  /**
+   * 单色模式：叶子也用 currentColor。
+   * 用于 favicon 这类单色场景（多色叶子在深色背景上会显脏）。
+   */
+  solid?: boolean;
+}
+const {
+  class: className = 'brand__mark',
+  leafColor = '#7C9A62',
+  solid = false,
+} = Astro.props;
+---
+
+<!--
+  纯装饰图形：用 aria-hidden 隐藏，避免与旁边的文字重复播报。
+  可访问名称由外层的可见文字提供（见 SiteNav 的 .brand），
+  这样也满足「可访问名称必须包含可见文字」的要求。
+-->
+<svg class={className} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+  <path
+    d="M16 9.2c-1.15-2.6-3.75-4.05-6.55-3.5C6.3 6.25 4.2 9.05 4.2 12.45c0 5.5 4.65 10.6 8.4 13.65a2.15 2.15 0 0 0 2.8 0c3.75-3.05 8.4-8.15 8.4-13.65 0-3.4-2.1-6.2-5.25-6.75-2.8-.55-5.4 0.9-6.55 3.5Z"
+    fill="currentColor"
+  />
+  <path
+    d="M16 9V4.4"
+    stroke="currentColor"
+    stroke-width="1.7"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <path
+    d="M16.3 7.05c1.7-2.7 4.45-3.85 7.15-3.4-.4 2.8-2.75 4.85-5.65 4.85-.6 0-1.1-.1-1.5-.25Z"
+    fill={solid ? 'currentColor' : leafColor}
+  />
+</svg>

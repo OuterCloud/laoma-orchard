@@ -1,0 +1,12 @@
+{
+  "name": "老马苹果园",
+  "short_name": "老马苹果园",
+  "description": "山东聊城高唐县自家果园。人工逐果套袋，生长季全程不施农药。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBF7F1",
+  "theme_color": "#A32B22",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

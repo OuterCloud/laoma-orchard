@@ -1,0 +1,87 @@
+---
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  claims: SiteInfo['claims'];
+}
+const { claims } = Astro.props;
+---
+
+<section class="trust" id="trust" aria-label="三条承诺">
+  <div class="wrap trust__grid">
+    {claims.map((c, i) => (
+      <article class="trust__item reveal" style={`--d:${i * 90}ms`}>
+        <!--
+          序号与横线放在同一行：数字在左，线从数字右边延伸到卡片边缘。
+          之前把数字用绝对定位 top:-22px 浮在卡片外，竖直中心正好落在
+          卡片的 border-top 上，线会横穿数字（实测底边越线 20px / 高 40px）。
+          改成同一行的 flex 之后，结构上就不可能再压线。
+        -->
+        <p class="trust__top">
+          <span class="trust__num" aria-hidden="true">{c.num}</span>
+          <span class="trust__rule" aria-hidden="true"></span>
+        </p>
+        <h2 class="trust__title">{c.title}</h2>
+        <p>{c.body}</p>
+      </article>
+    ))}
+  </div>
+</section>
+
+<style>
+  .trust {
+    background: var(--paper);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .trust__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(26px, 4vw, 62px);
+    padding-block: clamp(52px, 8vh, 92px);
+  }
+  .trust__item {
+    padding-top: 8px;
+  }
+  /* 序号与横线同一行：数字在左，线向右延伸到卡片边缘 */
+  .trust__top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .trust__num {
+    flex: none;
+    font-family: var(--font-num);
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--apple);
+    /* 0.65 是「不抢标题、又能达到 3:1」的下限：
+       数字虽是装饰（已 aria-hidden），但它是可见文字，
+       实测对比度也要达标，否则弱视用户看到的就是一团糊印。 */
+    opacity: 0.65;
+    letter-spacing: -0.02em;
+  }
+  .trust__rule {
+    flex: 1;
+    height: 2px;
+    background: var(--ink);
+  }
+  .trust__title {
+    font-size: clamp(19px, 1.6vw, 24px);
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+  .trust__item p {
+    color: var(--ink-3);
+    font-size: 15px;
+    line-height: 1.95;
+  }
+
+  @media (max-width: 940px) {
+    .trust__grid {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+  }
+</style>

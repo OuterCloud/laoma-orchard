@@ -1,0 +1,36 @@
+{
+  "name": "laoma-orchard",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "老马苹果园官方网站 —— 山东聊城高唐县自家果园，人工逐果套袋、生长季不施农药",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "preflight": "node tools/preflight.mjs",
+    "dev": "astro dev",
+    "build": "node tools/preflight.mjs && astro check && astro build",
+    "build:fast": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "verify": "node --experimental-strip-types tools/verify.ts",
+    "a11y": "node --experimental-strip-types tools/a11y.ts",
+    "mobile": "node --experimental-strip-types tools/mobile.ts",
+    "lh": "node tools/lighthouse.mjs",
+    "photos": "python3 tools/process_images.py",
+    "hero": "python3 tools/make_hero.py",
+    "qr": "python3 tools/make_qr.py",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^7.3.8",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/sitemap": "^3.7.4",
+    "playwright-core": "^1.64.0",
+    "typescript": "^6.0.3"
+  }
+}

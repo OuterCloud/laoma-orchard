@@ -1,0 +1,132 @@
+---
+/** 为什么套袋：四条理由 + 一句总结。图标为内联 SVG，无额外请求。 */
+const reasons = [
+  {
+    title: '虫子进不去',
+    body: '果袋在果实外面形成一层物理隔离。食心虫、卷叶蛾想下口，先得咬穿袋子。防住了虫，也就不必靠打药去补。',
+    icon: 'shield',
+  },
+  {
+    title: '晒不伤、磨不粗',
+    body: '烈日直射和风吹枝叶，都会在果面上留下斑和粗皮。袋子挡在外面，果皮才能长得细净。',
+    icon: 'sun',
+  },
+  {
+    title: '少一层残留的担心',
+    body: '不施农药，果子表面就没有需要额外解释的东西。给孩子削皮还是连皮吃，家里人可以少纠结一句。',
+    icon: 'leaf',
+  },
+  {
+    title: '地是自己的，账也是自己的',
+    body: '省一道工序，当年就能少花一笔工钱。但自家园子图的是年年能卖、回头客还认，所以这活儿不能省。',
+    icon: 'field',
+  },
+];
+---
+
+<section class="why section" id="why" aria-labelledby="whyTitle">
+  <div class="wrap">
+    <header class="section__head">
+      <p class="kicker reveal"><span>04</span>为什么值得</p>
+      <h2 class="h2 reveal" id="whyTitle" style="--d:70ms">一只果袋，替掉了一整季的药</h2>
+    </header>
+
+    <div class="why__grid">
+      {reasons.map((r, i) => (
+        <article class="why__card reveal" style={`--d:${i * 70}ms`}>
+          <svg viewBox="0 0 24 24" class="why__icon" aria-hidden="true">
+            {r.icon === 'shield' && (
+              <>
+                <path d="M12 3c-3.9 0-6 2.6-6 5.7 0 4.6 3.9 8.7 6 10.3 2.1-1.6 6-5.7 6-10.3C18 5.6 15.9 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.4" />
+                <path d="M9.2 9.4l1.9 1.9 3.7-3.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+              </>
+            )}
+            {r.icon === 'sun' && (
+              <>
+                <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.4" />
+                <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              </>
+            )}
+            {r.icon === 'leaf' && (
+              <>
+                <path d="M12 20.5c4.2 0 7-2.9 7-7.1 0-5-4.4-8.6-7-11-2.6 2.4-7 6-7 11 0 4.2 2.8 7.1 7 7.1z" fill="none" stroke="currentColor" stroke-width="1.4" />
+                <path d="M12 6.4v11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              </>
+            )}
+            {r.icon === 'field' && (
+              <path d="M4 19.4h16M6.6 19.4V9.2M12 19.4V9.2M17.4 19.4V9.2M3.4 9.2h17.2L12 4.2 3.4 9.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            )}
+          </svg>
+          <h3>{r.title}</h3>
+          <p>{r.body}</p>
+        </article>
+      ))}
+    </div>
+
+    <p class="why__foot reveal" style="--d:280ms">
+      <strong>一句话：</strong>套袋不是花架子，它是把「防虫」这件事，从喷在果子上，挪到了果子外面。
+    </p>
+  </div>
+</section>
+
+<style>
+  .why {
+    background: var(--paper);
+  }
+  .why__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: clamp(18px, 2.4vw, 34px);
+  }
+  .why__card {
+    padding: clamp(26px, 3.4vw, 44px);
+    background: var(--paper-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-lg);
+    transition:
+      transform 0.5s var(--ease),
+      box-shadow 0.5s var(--ease),
+      background-color 0.5s var(--ease);
+  }
+  .why__card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--sh-md);
+    background: #fff;
+  }
+  .why__icon {
+    width: 34px;
+    height: 34px;
+    color: var(--apple);
+    margin-bottom: 22px;
+  }
+  .why__card h3 {
+    font-size: clamp(18px, 1.6vw, 23px);
+    margin-bottom: 12px;
+  }
+  .why__card p {
+    color: var(--ink-3);
+    font-size: 15px;
+    line-height: 1.95;
+  }
+
+  .why__foot {
+    margin-top: clamp(28px, 4vw, 46px);
+    padding: clamp(22px, 3vw, 32px) clamp(24px, 3.4vw, 44px);
+    border-left: 3px solid var(--apple);
+    background: var(--apple-tint);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    font-family: var(--font-serif);
+    font-size: clamp(16px, 1.5vw, 21px);
+    line-height: 1.75;
+    color: var(--ink);
+  }
+  .why__foot strong {
+    color: var(--apple-deep);
+  }
+
+  @media (max-width: 1080px) {
+    .why__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

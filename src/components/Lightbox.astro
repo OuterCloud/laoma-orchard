@@ -1,0 +1,149 @@
+---
+/**
+ * 灯箱。交互逻辑见 src/scripts/lightbox.ts。
+ * 大图 URL 由画廊里的 [data-lightbox] 元素提供（构建期已生成优化后的地址），
+ * 客户端不做任何图片转换。
+ */
+---
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="照片查看" hidden>
+  <button class="lightbox__close" id="lbClose" type="button" aria-label="关闭（Esc）">✕</button>
+  <button class="lightbox__nav lightbox__nav--prev" id="lbPrev" type="button" aria-label="上一张（←）">‹</button>
+  <button class="lightbox__nav lightbox__nav--next" id="lbNext" type="button" aria-label="下一张（→）">›</button>
+
+  <figure class="lightbox__stage">
+    <img id="lbImg" src="" alt="" decoding="async" />
+    <figcaption>
+      <span id="lbCaption"></span>
+      <span class="lightbox__count" id="lbCount"></span>
+    </figcaption>
+  </figure>
+</div>
+
+<style>
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    background: rgba(14, 12, 10, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 0;
+    /* 关键：hidden 属性会被 display:grid 覆盖，必须显式收掉可见性与点击，
+       否则一个透明的全屏层会一直拦截整页的点击。 */
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.38s var(--ease),
+      visibility 0s linear 0.38s;
+    padding: clamp(52px, 7vh, 90px) clamp(16px, 6vw, 92px);
+  }
+  .lightbox.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+      opacity 0.38s var(--ease),
+      visibility 0s;
+  }
+  .lightbox__stage {
+    margin: 0;
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  .lightbox__stage img {
+    max-width: 100%;
+    max-height: calc(100svh - 190px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--r-sm);
+    box-shadow: var(--sh-lg);
+  }
+  .lightbox__stage figcaption {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    color: rgba(251, 247, 241, 0.9);
+    font-family: var(--font-serif);
+    font-size: 16px;
+    letter-spacing: 0.07em;
+  }
+  .lightbox__count {
+    font-family: var(--font-num);
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    color: rgba(251, 247, 241, 0.78);
+  }
+
+  .lightbox__close,
+  .lightbox__nav {
+    position: absolute;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    background: rgba(251, 247, 241, 0.07);
+    color: var(--paper);
+    border: 1px solid rgba(251, 247, 241, 0.16);
+    border-radius: 50%;
+    cursor: pointer;
+    transition:
+      background-color 0.3s var(--ease),
+      transform 0.3s var(--ease);
+  }
+  .lightbox__close {
+    top: clamp(16px, 3vh, 30px);
+    right: clamp(16px, 3vw, 34px);
+    width: 46px;
+    height: 46px;
+    font-size: 17px;
+  }
+  .lightbox__close:hover {
+    background: rgba(251, 247, 241, 0.18);
+    transform: rotate(90deg);
+  }
+  .lightbox__nav {
+    top: 50%;
+    width: 54px;
+    height: 54px;
+    font-size: 30px;
+    line-height: 0;
+    padding-bottom: 5px;
+  }
+  .lightbox__nav--prev {
+    left: clamp(10px, 2.5vw, 34px);
+    transform: translateY(-50%);
+  }
+  .lightbox__nav--next {
+    right: clamp(10px, 2.5vw, 34px);
+    transform: translateY(-50%);
+  }
+  .lightbox__nav:hover {
+    background: rgba(251, 247, 241, 0.18);
+  }
+
+  @media (max-width: 860px) {
+    .lightbox__nav {
+      top: auto;
+      bottom: clamp(14px, 3vh, 26px);
+      transform: none;
+    }
+    .lightbox__nav--prev {
+      left: 50%;
+      margin-left: -62px;
+    }
+    .lightbox__nav--next {
+      right: 50%;
+      margin-right: -62px;
+    }
+    .lightbox__stage img {
+      max-height: calc(100svh - 250px);
+    }
+  }
+</style>

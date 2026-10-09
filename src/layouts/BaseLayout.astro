@@ -1,0 +1,110 @@
+---
+import '../styles/global.css';
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  site: SiteInfo;
+  title: string;
+  description: string;
+}
+
+const { site, title, description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? site.url).href;
+
+/** 结构化数据：让搜索引擎理解这是一家真实的果园，而非普通网页 */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${site.url}/#website`,
+      name: site.name,
+      description: site.tagline,
+      inLanguage: 'zh-CN',
+      url: `${site.url}/`,
+    },
+    {
+      '@type': ['Farm', 'LocalBusiness'],
+      '@id': `${site.url}/#orchard`,
+      name: site.name,
+      description,
+      url: `${site.url}/`,
+      image: new URL('/og-cover.jpg', site.url).href,
+      priceRange: '面议',
+      address: {
+        '@type': 'PostalAddress',
+        addressCountry: 'CN',
+        // 省、市、县各自有独立字段，streetAddress 只放门牌级，
+        // 否则搜索引擎看到的是把完整地址又重复一遍。
+        addressRegion: site.place.province,
+        addressLocality: `${site.place.city}${site.place.county}`,
+        streetAddress: site.place.village || site.place.county,
+      },
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: site.place.geo.lat,
+        longitude: site.place.geo.lng,
+      },
+      areaServed: { '@type': 'Country', name: '中国' },
+      knowsAbout: ['苹果种植', '果实套袋', '无农药栽培', '果园直发'],
+      makesOffer: {
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Product',
+          name: '套袋鲜苹果',
+          category: '新鲜水果',
+          description: '生长季全程人工套袋、不施农药的鲜食苹果，果园现摘现发。',
+        },
+      },
+    },
+  ],
+};
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta
+      name="keywords"
+      content="老马苹果园,高唐苹果,山东苹果,套袋苹果,无农药苹果,自家果园,聊城高唐,果园采摘"
+    />
+    <meta name="author" content={site.name} />
+    <meta name="theme-color" content="#A32B22" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="canonical" href={canonical} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL('/og-cover.jpg', site.url).href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <script is:inline>
+      // 在样式生效前打标记，使入场动效只在 JS 可用时启用（禁用 JS 时内容照常可见）
+      document.documentElement.classList.add('js-ready');
+    </script>
+
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <div class="grain" aria-hidden="true"></div>
+    <slot />
+  </body>
+</html>

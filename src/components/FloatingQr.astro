@@ -1,0 +1,386 @@
+---
+import { resolveWechatQr } from '../lib/wechat-qr';
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  site: SiteInfo;
+}
+const { site } = Astro.props;
+
+const qr = resolveWechatQr(site.contact);
+const wechatId = site.contact.wechat.value;
+---
+
+{qr && (
+  <div class="qr-fab" id="qrFab">
+    <div class="qr-fab__card" id="qrFabCard" role="dialog" aria-label="微信二维码" aria-modal="false">
+      <p class="qr-fab__title">微信扫一扫</p>
+      {/*
+        原始 880px PNG 直接使用，不经 Astro 的有损转换：
+        二维码最怕压缩伪影，糊一点就可能扫不出来。
+      */}
+      <img
+        class="qr-fab__img"
+        src={qr.src}
+        width={qr.width}
+        height={qr.height}
+        alt="老马苹果园微信二维码，微信扫一扫添加"
+        loading="lazy"
+        decoding="async"
+      />
+      {wechatId && (
+        <p class="qr-fab__id">
+          微信号 <strong>{wechatId}</strong>
+        </p>
+      )}
+      <p class="qr-fab__hint">手机长按识别，或用微信扫一扫</p>
+      <button class="qr-fab__close" id="qrFabClose" type="button" aria-label="收起二维码">✕</button>
+    </div>
+
+    <button
+      class="qr-fab__btn"
+      id="qrFabBtn"
+      type="button"
+      aria-expanded="false"
+      aria-controls="qrFabCard"
+    >
+      <svg class="qr-fab__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M4 4h5v5H4V4Zm11 0h5v5h-5V4ZM4 15h5v5H4v-5Zm9.5 0h2v2h-2v-2Zm3.5 0h3v2h-1.5v1.5h1.5V21h-3v-3h-1.5v-3h1.5Zm-3.5 4h2v2h-2v-2Z"
+          fill="currentColor"
+        />
+      </svg>
+      <span class="qr-fab__label">微信联系购买</span>
+    </button>
+  </div>
+)}
+
+<script>
+  /*
+   * 悬浮二维码的开关逻辑。
+   *
+   * 两条经验都来自本项目的实际踩坑：
+   *
+   * 1) 显隐沿用「.is-open + visibility/pointer-events」，不用 hidden 属性。
+   *    灯箱和抽屉都因为 hidden 被 display:flex/grid 覆盖，
+   *    导致一层透明的全屏元素持续拦截整页点击。这里不再重复。
+   *
+   * 2) 同一个设备上不要同时用 hover 和 click 控制同一个面板。
+   *    最初两者都绑了，结果鼠标悬停先展开、紧接着 click 又把它切回关闭，
+   *    用户「点一下」反而什么都没看到。现在按设备能力分工：
+   *      有 hover（鼠标）→ 悬停展开、移开收起；点击不做切换（面板已经开着）
+   *      无 hover（触屏）→ 点击切换，点别处收起
+   *    键盘用户走 focusin/focusout 与 Esc，三条路径互不干扰。
+   */
+  const fab = document.querySelector<HTMLElement>('#qrFab');
+  if (fab) {
+    const btn = fab.querySelector<HTMLButtonElement>('#qrFabBtn');
+    const closeBtn = fab.querySelector<HTMLButtonElement>('#qrFabClose');
+    const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    const setOpen = (open: boolean) => {
+      fab.classList.toggle('is-open', open);
+      btn?.setAttribute('aria-expanded', String(open));
+    };
+    const isOpen = () => fab.classList.contains('is-open');
+
+    if (canHover) {
+      let hideTimer = 0;
+      fab.addEventListener('mouseenter', () => {
+        window.clearTimeout(hideTimer);
+        setOpen(true);
+      });
+      fab.addEventListener('mouseleave', () => {
+        hideTimer = window.setTimeout(() => setOpen(false), 240);
+      });
+      // 点击不再切换：面板已由悬停打开，切换只会造成「一点就消失」
+      btn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        setOpen(true);
+      });
+    } else {
+      btn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setOpen(!isOpen());
+      });
+      // 触屏没有 hover，改为点面板外收起
+      document.addEventListener('click', (e) => {
+        if (!isOpen()) return;
+        if (e.target instanceof Node && fab.contains(e.target)) return;
+        setOpen(false);
+      });
+    }
+
+    closeBtn?.addEventListener('click', () => {
+      setOpen(false);
+      btn?.focus();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen()) {
+        setOpen(false);
+        btn?.focus();
+      }
+    });
+
+    // 键盘：焦点进入组件时展开，离开后收起
+    fab.addEventListener('focusin', () => setOpen(true));
+    fab.addEventListener('focusout', () => {
+      window.setTimeout(() => {
+        if (!fab.contains(document.activeElement)) setOpen(false);
+      }, 0);
+    });
+
+    /*
+     * 在两处把浮窗收起 —— 都是「浮窗压住内容」或「属于重复」的场景：
+     *
+     * 1) 首屏 hero：底部那条数据条是通栏的（不受 1240px 居中容器约束），
+     *    浮窗会压住其中的「发货 / 现摘现发」。而且首屏本身就有「联系老马」按钮，
+     *    此刻浮窗并不必要。
+     * 2) 联系区：那里本来就有一张一模一样的二维码卡片；且在 1200~1280px
+     *    这类常见桌面宽度下，浮窗会压住第三张联系卡片。
+     *
+     * 用 IntersectionObserver 而不是滚动监听，避免主线程抖动。
+     */
+    const sections = ['hero', 'contact']
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
+
+    if (sections.length && 'IntersectionObserver' in window) {
+      const visible = new Set<Element>();
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) visible.add(entry.target);
+            else visible.delete(entry.target);
+          });
+          const muted = visible.size > 0;
+          fab.classList.toggle('is-muted', muted);
+          if (muted) setOpen(false);
+        },
+        // 进入视口下方 15% 以内就收起，避免「刚好压上」的那一瞬间
+        { rootMargin: '0px 0px -15% 0px', threshold: 0 }
+      );
+      sections.forEach((el) => io.observe(el));
+    }
+  }
+</script>
+
+<style>
+  /*
+   * 靠边距离与按钮尺寸都刻意收紧：
+   * 本站在 900~1300px 这类中等桌面宽度下，正文容器几乎贴边
+   * （.wrap 只有 20~48px 内边距、外侧没有留白），
+   * 固定浮层必须又小又靠边，才不至于压住正文。
+   */
+  .qr-fab {
+    position: fixed;
+    right: 12px;
+    bottom: 16px;
+    /* 低于灯箱(200)与移动端抽屉(99)，避免叠在它们上面 */
+    z-index: 90;
+    transition:
+      opacity 0.35s var(--ease),
+      visibility 0s;
+  }
+
+  /* 滚到联系区时淡出：那里已有同一张二维码，且避免压住卡片 */
+  .qr-fab.is-muted {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.35s var(--ease),
+      visibility 0s linear 0.35s;
+  }
+
+  /* ── 触发按钮 ── */
+  .qr-fab__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    /* 纯图标时是 40x40 的圆形；带文字时靠 padding 撑开 */
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 11px 13px;
+    gap: 7px;
+    border: 0;
+    border-radius: 100px;
+    cursor: pointer;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    box-shadow: 0 10px 30px rgba(29, 26, 22, 0.28);
+    transition:
+      transform 0.35s var(--ease),
+      background-color 0.35s var(--ease),
+      box-shadow 0.35s var(--ease);
+  }
+  .qr-fab__btn:hover {
+    background: var(--apple);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 36px rgba(29, 26, 22, 0.34);
+  }
+  .qr-fab__icon {
+    width: 19px;
+    height: 19px;
+    flex: none;
+  }
+  /*
+   * 文字标签只在「右侧有足够页边距」时显示。
+   *
+   * 正文容器 (.wrap) 最大 1240px 居中，所以两侧留白 = (100vw - 1240px) / 2。
+   * 带文字的按钮约 152px 宽，留白不够时它就会压到正文上
+   * （实测 1440 宽会盖住首屏数据条、工序小标题、画廊说明等）。
+   * 因此默认只显示图标，留白 ≥ 156px 时才把文字露出来 ——
+   * 这也符合本项目一贯的做法：断点不可行就换一种形态，而不是硬挤。
+   *
+   * 带文字的按钮实测约 132px 宽，加上与正文的 16px 间隔需要 148px 留白，
+   * 即 (100vw - 1240px) / 2 ≥ 148 → 视口 ≥ 1536px。
+   */
+  .qr-fab__label {
+    display: none;
+    font-weight: 500;
+  }
+  @media (min-width: 1536px) {
+    .qr-fab__label {
+      display: inline;
+    }
+  }
+
+  /* ── 弹出的二维码卡片 ── */
+  .qr-fab__card {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 12px);
+    width: 224px;
+    padding: 18px 18px 16px;
+    border-radius: var(--r-md);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    box-shadow: 0 24px 60px rgba(29, 26, 22, 0.22);
+    text-align: center;
+
+    /* 与灯箱同一套显隐方案：不用 hidden，避免被 display 覆盖后拦截点击 */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(8px) scale(0.97);
+    transform-origin: 100% 100%;
+    transition:
+      opacity 0.3s var(--ease),
+      transform 0.3s var(--ease-out),
+      visibility 0s linear 0.3s;
+  }
+  .qr-fab.is-open .qr-fab__card {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    transition:
+      opacity 0.3s var(--ease),
+      transform 0.3s var(--ease-out),
+      visibility 0s;
+  }
+
+  .qr-fab__title {
+    font-family: var(--font-num);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 12px;
+  }
+  .qr-fab__img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--r-sm);
+    background: #fff;
+  }
+  .qr-fab__id {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .qr-fab__id strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .qr-fab__hint {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--ink-4);
+  }
+
+  .qr-fab__close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    background: transparent;
+    color: var(--ink-4);
+    font-size: 13px;
+    line-height: 1;
+    transition:
+      background-color 0.25s var(--ease),
+      color 0.25s var(--ease);
+  }
+  .qr-fab__close:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+
+  /*
+   * 手机端不显示浮窗：
+   * 1) 联系区已经有同样的二维码，重复出现反而干扰；
+   * 2) 小屏上常驻浮层会挡住正文。
+   */
+  @media (max-width: 860px) {
+    .qr-fab {
+      display: none;
+    }
+  }
+
+  /*
+   * 安全区间的推算方式（这段很容易算错，写清楚）：
+   *
+   *   .wrap 最大 1240px 居中，两侧页边距 = (100vw - 1240px) / 2。
+   *   注意 .wrap 自己的 padding 属于容器内部，文字可以一直排到容器外边缘，
+   *   所以浮层必须完全落在「页边距」里才安全 —— 不能算进 padding。
+   *
+   *   图标态宽 40px + 右侧留 12px = 需要 52px，再加与正文的 16px 间隔：
+   *     (100vw - 1240) / 2 ≥ 68  →  视口 ≥ 1376px
+   *   带文字态实测 136px + 12px = 148px，再加 16px：
+   *     (100vw - 1240) / 2 ≥ 164 →  视口 ≥ 1568px
+   *
+   *   所以：< 1400px 不显示；1400~1520px 只显示图标；≥ 1536px 才显示文字。
+   *   窄屏上联系区那张二维码依然可用，不影响功能。
+   */
+  @media (max-width: 1399px) {
+    .qr-fab {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .qr-fab__card {
+      transition: opacity 0.2s linear, visibility 0s;
+      transform: none;
+    }
+    .qr-fab.is-open .qr-fab__card {
+      transform: none;
+    }
+  }
+</style>

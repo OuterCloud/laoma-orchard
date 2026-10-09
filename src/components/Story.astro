@@ -1,0 +1,130 @@
+---
+import { Picture } from 'astro:assets';
+import orchardRows from '../assets/crops/wide-orchard-rows.jpg';
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  facts: SiteInfo['facts'];
+}
+const { facts } = Astro.props;
+---
+
+<section class="story section" id="story" aria-labelledby="storyTitle">
+  <div class="wrap story__grid">
+    <div class="story__copy">
+      <p class="kicker reveal"><span>01</span>这座园子</p>
+      <h2 class="h2 reveal" id="storyTitle" style="--d:70ms">
+        高唐县的一块自家地，<br />和树上包着的果子
+      </h2>
+
+      <div class="prose reveal" style="--d:140ms">
+        <p>
+          高唐在鲁西北，聊城最北边的一个县。这里是暖温带季风气候 —— 春天多风、夏天雨热同期、
+          秋天光照足、冬天干冷。这种一年分明的气候，恰好是苹果喜欢的。
+        </p>
+        <p>
+          老马的园子就扎在这片地上。树是老树，地是自家的地，没有人比他更清楚哪一行朝南、哪一棵先红。
+        </p>
+        <p>
+          走在树下抬头看，枝头上挂着的不只是苹果，还有一层层淡白色的袋子。风一吹，袋子轻轻晃 ——
+          这是这个园子一年里最花功夫、也最不肯省的一道工序。
+        </p>
+      </div>
+
+      <dl class="facts reveal" style="--d:210ms">
+        {facts.map((f) => (
+          <div class="facts__row">
+            <dt>{f.label}</dt>
+            <dd>{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+
+    <figure class="story__media reveal" style="--d:120ms">
+      <Picture
+        src={orchardRows}
+        alt="成行的苹果树沿着田垄一直铺到远处的天际线"
+        widths={[500, 640, 800, 1080, 1280, 1600]}
+        sizes="(max-width: 940px) 92vw, 44vw"
+        formats={['avif', 'webp']}
+        quality={54}
+        loading="lazy"
+      />
+      <figcaption>顺着田垄往远处看，果树一行接一行。</figcaption>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .story__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+    gap: clamp(34px, 6vw, 96px);
+    align-items: start;
+  }
+  .story .h2 {
+    margin-bottom: 28px;
+  }
+
+  .facts {
+    margin: clamp(32px, 5vw, 54px) 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .facts__row {
+    display: grid;
+    grid-template-columns: minmax(96px, 150px) 1fr;
+    gap: 18px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: baseline;
+  }
+  .facts dt {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+  }
+  .facts dd {
+    margin: 0;
+    font-size: 15.5px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .story__media {
+    margin: 0;
+  }
+  .story__media :global(img) {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-md);
+    transition: transform 1.1s var(--ease-out);
+  }
+  .story__media:hover :global(img) {
+    transform: scale(1.03);
+  }
+  .story__media figcaption {
+    margin-top: 16px;
+    font-size: 13.5px;
+    color: var(--ink-4);
+    padding-left: 16px;
+    border-left: 2px solid var(--apple-soft);
+    line-height: 1.8;
+  }
+
+  @media (max-width: 940px) {
+    .story__grid {
+      grid-template-columns: 1fr;
+      gap: clamp(30px, 6vw, 48px);
+    }
+    .facts__row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+  }
+</style>

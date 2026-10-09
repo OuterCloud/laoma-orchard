@@ -1,0 +1,193 @@
+---
+/** 果园一年：按节气推进的工序清单。顺序即页面顺序，改文案直接改这里。 */
+const steps = [
+  {
+    tag: '春 · 3—4月',
+    title: '修剪与清园',
+    body: ['冬天剪完枝，开春把园子里的枯枝落叶清理干净。树势通透了，后面的光照和通风才有保证。'],
+  },
+  {
+    tag: '春 · 4月',
+    title: '开花与授粉',
+    body: ['苹果花一开，园子里最要紧的是授粉。花开得好不好，直接决定今年能留下多少果。'],
+  },
+  {
+    tag: '春 · 5月',
+    title: '疏果',
+    body: [
+      '花谢之后要狠心疏果 —— 把多余的、有伤的、长歪的小果掐掉。<em>舍不得疏，就长不出好果</em>，这是老马常说的话。',
+    ],
+  },
+  {
+    tag: '初夏 · 5—6月',
+    title: '套袋',
+    key: true,
+    body: [
+      '果子还只有指肚大的时候开始套袋。一手托住幼果，一手把袋口撑开、套上、扎紧 —— 一棵树上几百个果，得一果一袋地过手。整个园子套完，要连着忙上十几天。',
+    ],
+    note: '套袋之后，果面不再直接暴露在外，虫和鸟够不着，果皮也不会被烈日和风磨粗。',
+  },
+  {
+    tag: '夏 · 6—9月',
+    title: '守着，等它长',
+    body: ['夏天主要是看水、看草、看树势。雨水多了要排，旱了要浇。剩下的时间，就是让果实在袋子里慢慢长个头。'],
+  },
+  {
+    tag: '秋 · 9—11月',
+    title: '摘袋、上色、采摘',
+    body: ['快熟的时候把袋子摘掉，让果子晒几天太阳，颜色才上得来。然后才是挑着熟度、一颗一颗地摘。'],
+  },
+  {
+    tag: '秋 · 采摘后',
+    title: '分选、装箱、发货',
+    body: ['摘下就分选。有碰伤的、个头不够的挑出去，合格的才装箱。装箱发走，尽量缩短从枝头到你手上的时间。'],
+  },
+];
+---
+
+<section class="year section" id="year" aria-labelledby="yearTitle">
+  <div class="wrap">
+    <header class="section__head">
+      <p class="kicker reveal"><span>02</span>果园的一年</p>
+      <h2 class="h2 reveal" id="yearTitle" style="--d:70ms">从开花到装箱，中间隔着十几次弯腰</h2>
+      <p class="lede reveal" style="--d:140ms">
+        苹果不是秋天那一下就长成的。下面这些事，一年要按着节气做一遍，哪一步偷懒，秋天树上就会告诉你。
+      </p>
+    </header>
+
+    <ol class="steps">
+      {steps.map((s, i) => (
+        <li class:list={['step', 'reveal', { 'step--key': s.key }]} style={`--d:${(i % 4) * 60}ms`}>
+          <span class="step__tag">{s.tag}</span>
+          <div class="step__body">
+            <h3 class="step__title">
+              {s.title}
+              {s.key && <span class="tag-key">最费工的一步</span>}
+            </h3>
+            {s.body.map((p) => <p set:html={p} />)}
+            {s.note && <p class="step__note">{s.note}</p>}
+          </div>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .year {
+    background: var(--paper-2);
+    border-block: 1px solid var(--line-soft);
+  }
+
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: s;
+  }
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 210px) minmax(0, 1fr);
+    gap: clamp(20px, 4vw, 60px);
+    padding: clamp(26px, 3.6vw, 42px) 0;
+    border-top: 1px solid var(--line);
+    counter-increment: s;
+  }
+  .step:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+  .step::before {
+    content: counter(s, decimal-leading-zero);
+    position: absolute;
+    right: 0;
+    top: clamp(26px, 3.6vw, 42px);
+    font-family: var(--font-num);
+    font-size: clamp(30px, 4vw, 52px);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--ink);
+    opacity: 0.07;
+    letter-spacing: -0.03em;
+  }
+  .step__tag {
+    /*
+     * align-self 必须显式设成 start。
+     * 它是 display:grid 的直接子元素，默认 stretch 会被拉成整行高度 ——
+     * 结果日期标签被撑到 100px 以上，与右侧工序内容之间出现一大片空白
+     * （实测 1440px 下高 107px，手机端单列时只有 21px）。
+     */
+    align-self: start;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--apple);
+    padding-top: 6px;
+  }
+  .step__title {
+    font-size: clamp(20px, 2vw, 28px);
+    margin-bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .step__body p {
+    color: var(--ink-3);
+    font-size: 15.5px;
+    max-width: 66ch;
+  }
+  .step__body p + p {
+    margin-top: 0.85em;
+  }
+  .step__body :global(em) {
+    font-style: normal;
+    color: var(--apple);
+    font-weight: 600;
+  }
+  .step__note {
+    padding-left: 16px;
+    border-left: 2px solid var(--leaf-soft);
+    font-size: 14.5px;
+  }
+  .tag-key {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--paper);
+    background: var(--apple);
+    padding: 5px 12px;
+    border-radius: 100px;
+  }
+  /*
+   * 高亮行：背景块向外溢出到容器边缘，但内容要留出内边距。
+   *
+   * 问题在于这一步是给 <li> 加背景，而 <li> 自身没有左右内边距，
+   * 于是「初夏 · 5—6月」直接贴到背景块最左边（实测左边距 0px）。
+   * 其他行没有背景块，看不出这个毛病，只有高亮行暴露出来。
+   *
+   * 做法：加内边距 + 等量负外边距 —— 背景块照旧铺到边缘，
+   * 文字则被推回与其他各行完全对齐的位置。
+   */
+  .step--key {
+    padding-inline: clamp(18px, 2.2vw, 30px);
+    margin-inline: calc(-1 * clamp(18px, 2.2vw, 30px));
+    background: linear-gradient(90deg, var(--apple-tint), transparent 72%);
+  }
+  .step--key .step__tag {
+    color: var(--apple-deep);
+  }
+
+  @media (max-width: 940px) {
+    .step {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .step__tag {
+      padding-top: 0;
+    }
+  }
+</style>

@@ -1,0 +1,5 @@
+{
+  "_readme": "首屏选片配置。改这里后运行 python3 tools/make_hero.py 重出首屏横竖两版裁切图。",
+  "from": "tall-tree",
+  "focus": 0.34
+}

@@ -1,0 +1,317 @@
+---
+import Logo from './Logo.astro';
+
+interface Props {
+  /** 导航项，集中在此定义，页脚复用同一份 */
+  links?: { href: string; label: string }[];
+}
+
+const {
+  links = [
+    { href: '#story', label: '果园' },
+    { href: '#year', label: '一年' },
+    { href: '#gallery', label: '实拍' },
+    { href: '#why', label: '为什么' },
+    { href: '#visit', label: '到园' },
+  ],
+} = Astro.props;
+---
+
+<div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+<header class="nav" id="nav">
+  <div class="nav__inner">
+    <!--
+      不用 aria-label：它的值「老马苹果园 首页」并不包含页面上的可见文字
+      （「老马苹果园 / 山东 · 高唐」），会触发「可访问名称与可见文字不一致」。
+      直接让可见文字充当可访问名称即可。
+    -->
+    <a class="brand" href="#top">
+      <Logo class="brand__mark" />
+      <span class="brand__text">
+        <span class="brand__name">老马苹果园</span>
+        <span class="brand__sub">山东 · 高唐</span>
+      </span>
+    </a>
+
+    <nav class="nav__links" aria-label="页面导航">
+      {links.map((l) => <a href={l.href}>{l.label}</a>)}
+      <a class="nav__cta" href="#contact">联系我们</a>
+    </nav>
+
+    <button
+      class="nav__toggle"
+      id="navToggle"
+      type="button"
+      aria-label="打开菜单"
+      aria-expanded="false"
+      aria-controls="drawer"
+    >
+      <span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div class="drawer" id="drawer" hidden>
+  <nav class="drawer__links" aria-label="移动端导航">
+    {links.map((l, i) => (
+      <a href={l.href}><i>{String(i + 1).padStart(2, '0')}</i>{l.label}</a>
+    ))}
+    <a href="#contact"><i>06</i>联系我们</a>
+  </nav>
+  <p class="drawer__foot">山东聊城高唐县 · 自家果园<br />一颗一颗手套袋 · 全程不施农药</p>
+</div>
+
+<style>
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    z-index: 120;
+    background: transparent;
+  }
+  .progress span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--apple), var(--apple-soft));
+  }
+
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: var(--nav-h);
+    display: flex;
+    align-items: center;
+    color: var(--paper);
+    transition:
+      background-color 0.45s var(--ease),
+      box-shadow 0.45s var(--ease),
+      color 0.45s var(--ease);
+  }
+  .nav__inner {
+    width: 100%;
+    max-width: var(--wrap);
+    margin-inline: auto;
+    padding-inline: var(--pad);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .nav.is-scrolled {
+    background: rgba(251, 247, 241, 0.88);
+    backdrop-filter: saturate(150%) blur(14px);
+    -webkit-backdrop-filter: saturate(150%) blur(14px);
+    box-shadow: 0 1px 0 var(--line), 0 12px 34px rgba(29, 26, 22, 0.06);
+    color: var(--ink);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: none;
+    /* 触屏上把整块品牌区做成可点区域，高度撑到 44px 以上 */
+    padding: 8px 4px 8px 0;
+    min-height: 44px;
+  }
+  .brand :global(.brand__mark) {
+    width: 30px;
+    height: 30px;
+    color: var(--apple-soft);
+    transition: color 0.4s var(--ease);
+  }
+  .nav.is-scrolled .brand :global(.brand__mark) {
+    color: var(--apple);
+  }
+  .brand__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+  .brand__name {
+    font-family: var(--font-serif);
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+  .brand__sub {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    /* 压在照片上，0.68 在亮处不够；提到 0.85 */
+    opacity: 0.85;
+    margin-top: 3px;
+  }
+
+  .nav__links {
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 2.2vw, 34px);
+  }
+  .nav__links a {
+    position: relative;
+    font-size: 14.5px;
+    letter-spacing: 0.06em;
+    padding: 6px 0;
+    opacity: 0.88;
+    transition: opacity 0.3s var(--ease);
+  }
+  .nav__links a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    transition: transform 0.4s var(--ease-out);
+  }
+  .nav__links a:hover {
+    opacity: 1;
+  }
+  .nav__links a:hover::after {
+    transform: scaleX(1);
+  }
+
+  /*
+   * 选择器必须带 .nav__links 前缀。
+   * 上面那条 `.nav__links a { padding: 6px 0 }` 的优先级是 (0,1,1)，
+   * 单独的 `.nav__cta` 只有 (0,1,0)，会被压住 —— 结果是按钮左右内边距被清零，
+   * 文字直接顶到胶囊边框上（实测左右各剩 1px）。
+   */
+  .nav__links a.nav__cta {
+    padding: 10px 26px;
+    border: 1px solid currentColor;
+    border-radius: 100px;
+    opacity: 0.95;
+  }
+  .nav__links a.nav__cta::after {
+    display: none;
+  }
+  .nav__links a.nav__cta:hover {
+    background: var(--apple);
+    border-color: var(--apple);
+    color: var(--paper);
+  }
+
+  .nav__toggle {
+    display: none;
+    width: 44px;
+    height: 44px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    align-items: center;
+    color: inherit;
+  }
+  .nav__toggle span {
+    display: block;
+    width: 24px;
+    height: 1.5px;
+    background: currentColor;
+    transition: transform 0.4s var(--ease);
+  }
+  .nav__toggle[aria-expanded='true'] span:first-child {
+    transform: translateY(3.75px) rotate(45deg);
+  }
+  .nav__toggle[aria-expanded='true'] span:last-child {
+    transform: translateY(-3.75px) rotate(-45deg);
+  }
+
+  .drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: var(--paper);
+    padding: calc(var(--nav-h) + 30px) var(--pad) 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    opacity: 0;
+    /* 同灯箱：hidden 属性会被 display:flex 覆盖，必须显式收掉可见性与点击 */
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.4s var(--ease),
+      visibility 0s linear 0.4s;
+  }
+  .drawer.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+      opacity 0.4s var(--ease),
+      visibility 0s;
+  }
+  .drawer__links {
+    display: flex;
+    flex-direction: column;
+  }
+  .drawer__links a {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--line-soft);
+    font-family: var(--font-serif);
+    font-size: 25px;
+    color: var(--ink);
+  }
+  .drawer__links i {
+    font-family: var(--font-num);
+    font-style: normal;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--apple);
+    opacity: 0.75;
+  }
+  .drawer__foot {
+    font-size: 13.5px;
+    color: var(--ink-4);
+    line-height: 2;
+  }
+
+  @media (max-width: 940px) {
+    .nav__links {
+      display: none;
+    }
+    .nav__toggle {
+      display: flex;
+    }
+    /* 触屏上把链接做得更好点：至少 44px 高 */
+    .drawer__links a {
+      min-height: 56px;
+      padding: 18px 0;
+    }
+  }
+  /*
+   * 窄屏也不再隐藏品牌副标题。
+   * 原来这里是 display: none，结果手机上整个品牌文字都不见了，
+   * 只孤零零剩一个苹果图标 —— 品牌名不显示，对外传播是损失。
+   * 改为缩小字号与字距，实测放得下（品牌区 + 汉堡按钮远小于屏宽）。
+   */
+  @media (max-width: 560px) {
+    /* 字号保持 12px 下限，只收字距；实测品牌区 + 汉堡按钮在 320px 下仍有余量 */
+    .brand__sub {
+      letter-spacing: 0.08em;
+    }
+    .brand__name {
+      font-size: 17px;
+      letter-spacing: 0.04em;
+    }
+  }
+</style>

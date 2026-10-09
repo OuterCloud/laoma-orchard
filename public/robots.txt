@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://laoma-orchard.example.com/sitemap-index.xml

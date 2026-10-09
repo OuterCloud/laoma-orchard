@@ -1,0 +1,70 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteNav from '../components/SiteNav.astro';
+import Hero from '../components/Hero.astro';
+import Trust from '../components/Trust.astro';
+import Story from '../components/Story.astro';
+import Year from '../components/Year.astro';
+import Gallery from '../components/Gallery.astro';
+import Why from '../components/Why.astro';
+import Feature from '../components/Feature.astro';
+import Harvest from '../components/Harvest.astro';
+import Visit from '../components/Visit.astro';
+import Contact from '../components/Contact.astro';
+import Footer from '../components/Footer.astro';
+import Lightbox from '../components/Lightbox.astro';
+import FloatingQr from '../components/FloatingQr.astro';
+import { getSite } from '../lib/site';
+
+const site = await getSite();
+
+// getCollection 的返回顺序不确定，必须显式排序
+const photos = (await getCollection('photos')).sort((a, b) => a.data.order - b.data.order);
+
+const title = `${site.name} · ${site.place.city}${site.place.county} | 一颗一颗手套袋，全程不施农药`;
+const description =
+  `${site.place.full}自家果园。园子里的每一个苹果，都是老马在果子还小的时候一个一个亲手套袋，` +
+  `整个生长季不打一滴农药。现摘现发，从枝头到你家。`;
+
+/*
+ * 导航项：全站唯一来源，导航栏、手机抽屉、页脚都从这里取。
+ * label 用各区块的 kicker（该区块的小标题），与区块内的编号一一对应，
+ * 相当于一份准确的目录，而不是缩写。
+ */
+const links = [
+  { href: '#story', label: '这座园子' },
+  { href: '#year', label: '果园的一年' },
+  { href: '#gallery', label: '果园实拍' },
+  { href: '#why', label: '为什么套袋' },
+  { href: '#visit', label: '到园来' },
+];
+---
+
+<BaseLayout site={site} title={title} description={description}>
+  <SiteNav links={links} />
+
+  <main id="main">
+    <span id="top"></span>
+
+    <Hero site={site} />
+    <Trust claims={site.claims} />
+    <Story facts={site.facts} />
+    <Year />
+    <Gallery photos={photos.map((p) => p.data)} />
+    <Why />
+    <Feature />
+    <Harvest />
+    <Visit place={site.place} visitNote={site.contact.visitNote} />
+    <Contact site={site} />
+  </main>
+
+  <Footer site={site} links={links} />
+  <Lightbox />
+  {/* 常驻悬浮的微信二维码（手机端自动隐藏，联系区已有同一张） */}
+  <FloatingQr site={site} />
+
+  <script>
+    import '../scripts/main';
+  </script>
+</BaseLayout>

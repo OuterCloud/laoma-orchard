@@ -1,0 +1,209 @@
+---
+import { Picture, getImage } from 'astro:assets';
+import { photo } from '../lib/photos';
+
+export interface GalleryPhoto {
+  id: string;
+  order: number;
+  file: string;
+  caption: string;
+  alt: string;
+}
+
+interface Props {
+  photos: GalleryPhoto[];
+}
+const { photos } = Astro.props;
+
+/** 每张卡片都用同一组目标宽度，srcset 由 Astro 生成 */
+const WIDTHS = [360, 480, 640, 760, 960];
+const SIZES = '(max-width: 860px) 92vw, (max-width: 1080px) 45vw, 30vw';
+
+/**
+ * 灯箱单独产出一份大图。
+ *
+ * 不能直接复用卡片的 srcset：卡片按 30vw 取图，放大到全屏时浏览器只会挑到
+ * 400~600px 的版本，看起来是糊的。这里按「全屏高度、保持 4:5 的原比例」算目标尺寸，
+ * 4 倍像素密度一起产出，放大时才够清晰。
+ */
+const LIGHTBOX_W = 1150; // 源片就是这个宽度，不上采样
+const large = await Promise.all(
+  photos.map((p) => {
+    const meta = photo(p.file);
+    const width = Math.min(LIGHTBOX_W, meta.width);
+    const height = Math.round((width / meta.width) * meta.height);
+    return getImage({
+      src: meta,
+      widths: [640, 900, width],
+      format: 'webp',
+      quality: 82,
+      width,
+      height,
+    });
+  })
+);
+---
+
+<section class="gallery section" id="gallery" aria-labelledby="galleryTitle">
+  <div class="wrap">
+    <header class="section__head section__head--split">
+      <div>
+        <p class="kicker reveal"><span>03</span>果园实拍</p>
+        <h2 class="h2 reveal" id="galleryTitle" style="--d:70ms">没有摆拍，就是这么长的</h2>
+      </div>
+      <p class="lede reveal" style="--d:140ms">
+        这些照片都是在园子里随手拍的。你能看到最多的东西，就是那些挂在枝头的果袋 ——
+        它们替苹果挡了一整个生长季的风吹日晒。<br />
+        <span class="hint">点击任意一张可以放大看。</span>
+      </p>
+    </header>
+
+    <div class="gallery__grid">
+      {photos.map((p, i) => (
+        <figure
+          class="tile reveal"
+          style={`--d:${(i % 4) * 60}ms`}
+          data-lightbox
+          data-full={large[i]!.src}
+          data-srcset={large[i]!.srcSet.attribute}
+          data-sizes="(max-width: 900px) 100vw, 1150px"
+          data-width={large[i]!.attributes.width}
+          data-height={large[i]!.attributes.height}
+          data-caption={p.caption}
+          data-index={i}
+        >
+          <Picture
+            src={photo(p.file)}
+            alt={p.alt}
+            widths={WIDTHS}
+            sizes={SIZES}
+            formats={['avif', 'webp']}
+            quality={54}
+            loading="lazy"
+            class="tile__img"
+          />
+          <figcaption class="tile__cap">
+            <button class="tile__btn" type="button" aria-label={`放大查看：${p.caption}`}>
+              {p.caption}
+            </button>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .section__head--split {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: clamp(24px, 5vw, 72px);
+    align-items: end;
+  }
+
+  .gallery__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(12px, 1.4vw, 22px);
+  }
+
+  .tile {
+    position: relative;
+    margin: 0;
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--paper-3);
+    box-shadow: var(--sh-sm);
+    transition:
+      box-shadow 0.5s var(--ease),
+      transform 0.5s var(--ease);
+  }
+  .tile:hover {
+    box-shadow: var(--sh-md);
+    transform: translateY(-3px);
+  }
+
+  /* 统一 4:5 网格。
+     曾经试过让首块跨两列做「特色大图」，但跨列后要精确维持同行等高非常脆弱
+     （列宽带小数，差 2px 就会把伙伴撑高、下方留出空洞）。实拍照片本身已经够好看，
+     统一网格更整齐，也不会出现空洞。 */
+  .tile :global(.tile__img) {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    cursor: zoom-in;
+    transition: transform 1.1s var(--ease-out);
+  }
+  .tile:hover :global(.tile__img) {
+    transform: scale(1.045);
+  }
+
+  .tile__cap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* 说明文字压在照片上，渐变必须足够厚才读得清。
+       原先 0.82 的收尾在浅色果实上只有约 2:1，不达标；加深到 0.95 并配合文字阴影。 */
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(20, 18, 14, 0.55) 42%,
+      rgba(20, 18, 14, 0.95) 100%
+    );
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 0.45s var(--ease),
+      transform 0.45s var(--ease);
+  }
+  .tile:hover .tile__cap,
+  .tile:focus-within .tile__cap {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .tile__btn {
+    display: block;
+    width: 100%;
+    padding: 46px 18px 16px;
+    background: none;
+    border: 0;
+    cursor: zoom-in;
+    text-align: left;
+    color: var(--paper);
+    font-family: var(--font-serif);
+    font-size: 16px;
+    letter-spacing: 0.05em;
+    /* 压在照片上，多一层阴影兜住亮部 */
+    text-shadow: 0 1px 12px rgba(20, 18, 14, 0.85);
+  }
+  /* 触屏没有 hover，说明文字常显 */
+  @media (hover: none) {
+    .tile__cap {
+      opacity: 1;
+      transform: none;
+    }
+    .tile__btn {
+      padding-top: 34px;
+    }
+  }
+
+  @media (max-width: 1080px) {
+    .gallery__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 940px) {
+    .section__head--split {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+  }
+  @media (max-width: 860px) {
+    .gallery__grid {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+  }
+</style>

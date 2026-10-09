@@ -1,0 +1,490 @@
+---
+import { getImage } from 'astro:assets';
+import heroWide from '../assets/crops/hero.jpg';
+import heroTall from '../assets/crops/hero-tall.jpg';
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  site: SiteInfo;
+}
+const { site } = Astro.props;
+/*
+ * 两版首屏图各自预生成 avif 各档。
+ * 用原生 <picture><source media> 而不是两个 <img>：
+ * 浏览器只会下载「当前媒体查询命中的那一版」，
+ * 而两个 <img> + CSS display 会两张都下（实测手机端白下 210KB 的横版）。
+ *
+ * quality 取 52：这批照片在 68 与 52 之间目视无法分辨
+ * （平均像素差 3.5/255），但体积少约 40%。
+ * 首屏图是 LCP 元素，这 40% 直接体现为手机端首屏变快。
+ */
+const wideWidths = [640, 960, 1280, 1366, 1600, 1920];
+const tallWidths = [420, 560, 720, 900, 1100];
+
+const [wideSrcs, tallSrcs] = await Promise.all([
+  Promise.all(
+    wideWidths.map((w) => getImage({ src: heroWide, width: w, format: 'avif', quality: 52 }))
+  ),
+  Promise.all(
+    tallWidths.map((w) => getImage({ src: heroTall, width: w, format: 'avif', quality: 52 }))
+  ),
+]);
+
+const toSrcSet = (list: { src: string; attributes: { width?: number } }[]) =>
+  list.map((img) => `${img.src} ${img.attributes.width}w`).join(', ');
+
+const wideSet = toSrcSet(wideSrcs);
+const tallSet = toSrcSet(tallSrcs);
+const wideFallback = heroWide.src;
+const tallFallback = heroTall.src;
+---
+
+<section class="hero" id="hero" aria-labelledby="heroTitle">
+  <div class="hero__media">
+    <!--
+      首屏需要分「艺术方向」：桌面用横构图，手机用竖构图。
+      用原生 <picture><source media>，浏览器只下载命中的那一版；
+      媒体查询内的那张加 fetchpriority=high，让 LCP 图片尽早开始下载。
+    -->
+    <picture>
+      <source
+        media="(max-width: 860px)"
+        type="image/avif"
+        srcset={tallSet}
+        sizes="100vw"
+        width={heroTall.width}
+        height={heroTall.height}
+      />
+      <source media="(max-width: 860px)" srcset={tallFallback} sizes="100vw" />
+      <source type="image/avif" srcset={wideSet} sizes="100vw" />
+      <img
+        class="hero__img"
+        src={wideFallback}
+        width={heroWide.width}
+        height={heroWide.height}
+        alt="逆光下的苹果树，一颗颗苹果被半透明果袋包裹着垂在枝叶间"
+        fetchpriority="high"
+        decoding="async"
+      />
+    </picture>
+  </div>
+  <div class="hero__veil" aria-hidden="true"></div>
+
+  <div class="hero__content">
+    <p class="hero__eyebrow reveal">
+      <span class="dot"></span>{site.place.province} · {site.place.city} · {site.place.county} · 自家果园
+    </p>
+
+    <h1 class="hero__title" id="heroTitle">
+      <span class="reveal">{site.name}</span>
+      <span class="hero__rule reveal" style="--d:160ms" aria-hidden="true"></span>
+      <span class="hero__promise reveal" style="--d:240ms">
+        一颗一颗手套袋<br />整个生长季，不打一滴农药
+      </span>
+    </h1>
+
+    <p class="hero__lede reveal" style="--d:340ms">
+      果子还小的时候，老马把它们一个一个套进袋子里。<br class="br-desk" />
+      从春天到秋天，园子里没有喷过农药 —— 苹果是在叶子和果袋里，慢慢长熟的。
+    </p>
+
+    <div class="hero__actions reveal" style="--d:440ms">
+      <a class="btn btn--solid" href="#gallery">看看果园的样子</a>
+      <a class="btn btn--ghost" href="#contact">联系老马</a>
+    </div>
+  </div>
+
+  <dl class="hero__facts reveal" style="--d:560ms">
+    {site.heroFacts.map((f) => (
+      <div>
+        <dt>{f.label}</dt>
+        <dd>{f.value}</dd>
+      </div>
+    ))}
+  </dl>
+
+  <!-- 同上：可见文字「往下看」已足够清楚，不再另加 aria-label 以免不一致 -->
+  <a class="scroll-hint" href="#trust">
+    <span class="scroll-hint__line" aria-hidden="true"></span>
+    <span class="scroll-hint__text">往下看</span>
+  </a>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-top: calc(var(--nav-h) + 40px);
+    overflow: hidden;
+    background: #2a2620;
+    isolation: isolate;
+  }
+
+  .hero__media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .hero__media :global(.hero__img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    animation: heroDrift 26s var(--ease) both;
+  }
+  @keyframes heroDrift {
+    from {
+      transform: scale(1.06);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  .hero__veil {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      linear-gradient(
+        180deg,
+        /* 顶部这一段要够厚：导航压在照片上，天空的亮部会让白字失效。
+           实测原来 0.5 时导航文字在亮处只有约 2.6:1（WCAG 需 4.5），
+           这里加深到 0.72 并把过渡拉长，中段仍留出照片的透亮感。 */
+        rgba(20, 18, 14, 0.72) 0%,
+        rgba(20, 18, 14, 0.58) 9%,
+        rgba(20, 18, 14, 0.3) 18%,
+        rgba(20, 18, 14, 0.08) 30%,
+        rgba(20, 18, 14, 0.3) 58%,
+        rgba(20, 18, 14, 0.74) 100%
+      ),
+      radial-gradient(115% 72% at 18% 80%, rgba(20, 18, 14, 0.42), transparent 60%);
+  }
+
+  .hero__content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: min(var(--wrap), 1100px);
+    margin-inline: auto;
+    padding-inline: var(--pad);
+    padding-bottom: clamp(30px, 5vh, 58px);
+    color: var(--paper);
+  }
+
+  .hero__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(251, 247, 241, 0.9);
+    margin-bottom: 26px;
+  }
+  .hero__eyebrow .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--apple-soft);
+    box-shadow: 0 0 0 4px rgba(196, 85, 63, 0.28);
+    animation: pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 4px rgba(196, 85, 63, 0.28);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(196, 85, 63, 0.06);
+    }
+  }
+
+  .hero__title {
+    color: var(--paper);
+  }
+  .hero__title > span {
+    display: block;
+  }
+  .hero__title > span:first-child {
+    font-size: clamp(42px, 8.2vw, 116px);
+    line-height: 1.02;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 40px rgba(0, 0, 0, 0.35);
+  }
+  .hero__rule {
+    width: clamp(56px, 8vw, 108px);
+    height: 2px;
+    background: var(--apple-soft);
+    margin: clamp(22px, 3.2vh, 34px) 0;
+  }
+  .hero__promise {
+    font-size: clamp(19px, 2.5vw, 34px);
+    line-height: 1.55;
+    font-weight: 500;
+    color: rgba(251, 247, 241, 0.96);
+    letter-spacing: 0.03em;
+  }
+
+  .hero__lede {
+    margin-top: clamp(22px, 3.4vh, 34px);
+    max-width: 46ch;
+    font-size: clamp(14.5px, 1.05vw, 17px);
+    line-height: 1.95;
+    color: rgba(251, 247, 241, 0.9);
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: clamp(26px, 4vh, 40px);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 30px;
+    border-radius: 100px;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+    transition:
+      transform 0.35s var(--ease),
+      background-color 0.35s var(--ease),
+      color 0.35s var(--ease),
+      border-color 0.35s var(--ease),
+      box-shadow 0.35s var(--ease);
+  }
+  .btn--solid {
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  }
+  .btn--solid:hover {
+    transform: translateY(-2px);
+    background: #fff;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
+  }
+  .btn--ghost {
+    border-color: rgba(251, 247, 241, 0.45);
+    color: var(--paper);
+    backdrop-filter: blur(6px);
+  }
+  .btn--ghost:hover {
+    background: rgba(251, 247, 241, 0.14);
+    border-color: rgba(251, 247, 241, 0.8);
+    transform: translateY(-2px);
+  }
+
+  .hero__facts {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    margin: 0;
+    border-top: 1px solid rgba(251, 247, 241, 0.18);
+    background: linear-gradient(180deg, rgba(20, 18, 14, 0.34), rgba(20, 18, 14, 0.52));
+    backdrop-filter: blur(4px);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .hero__facts > div {
+    padding: clamp(16px, 2.4vh, 26px) clamp(14px, 2.4vw, 34px);
+    border-left: 1px solid rgba(251, 247, 241, 0.14);
+  }
+  .hero__facts > div:first-child {
+    border-left: 0;
+  }
+  .hero__facts dt {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(251, 247, 241, 0.74);
+    margin-bottom: 7px;
+  }
+  .hero__facts dd {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: clamp(15px, 1.35vw, 20px);
+    color: var(--paper);
+    letter-spacing: 0.04em;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    z-index: 3;
+    right: var(--pad);
+    bottom: clamp(120px, 17vh, 190px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: rgba(251, 247, 241, 0.74);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    transition: color 0.35s var(--ease);
+  }
+  .scroll-hint:hover {
+    color: var(--paper);
+  }
+  .scroll-hint__line {
+    width: 1px;
+    height: 58px;
+    background: linear-gradient(180deg, transparent, currentColor);
+    position: relative;
+    overflow: hidden;
+  }
+  .scroll-hint__line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--paper);
+    animation: trace 2.4s var(--ease) infinite;
+  }
+  @keyframes trace {
+    0% {
+      transform: translateY(-100%);
+    }
+    60%,
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  /* ── 移动端：满屏封面式首屏 ──
+     原先手机端是「图片占 62svh + 下方正文依次堆叠」，
+     结果关键内容全被推到屏幕外：在 568px 高的手机上，
+     按钮位于 y=822（超出首屏 388px），数据条更在 y=988。
+     现在改成和桌面一致的思路：照片铺满整屏做背景层，
+     文字浮在其上，高度全部用 svh 表达，随屏幕高自动收放。 */
+  @media (max-width: 860px) {
+    .hero {
+      min-height: 100svh;
+      padding-top: 0;
+    }
+    .hero__media {
+      position: absolute;
+      inset: 0;
+      height: auto;
+      min-height: 0;
+    }
+    .hero__media :global(.hero__img) {
+      height: 100%;
+      min-height: 0;
+      aspect-ratio: auto;
+      object-fit: cover;
+    }
+    .hero__veil {
+      inset: 0;
+      height: auto;
+      min-height: 0;
+      /* 文字压在照片上，上下都要压暗；中段留白让照片透出来 */
+      background: linear-gradient(
+        180deg,
+        rgba(20, 18, 14, 0.62) 0%,
+        rgba(20, 18, 14, 0.3) 24%,
+        rgba(20, 18, 14, 0.42) 44%,
+        rgba(20, 18, 14, 0.86) 70%,
+        rgba(20, 18, 14, 0.95) 100%
+      );
+    }
+    .hero__content {
+      margin-top: auto;
+      padding-top: calc(var(--nav-h) + 12px);
+      padding-bottom: 12px;
+    }
+    /* 全部按视口高度缩放，矮屏自动收紧 */
+    .hero__title > span:first-child {
+      font-size: clamp(30px, 9.4svh, 54px);
+    }
+    .hero__rule {
+      margin: 14px 0;
+    }
+    .hero__promise {
+      font-size: clamp(15px, 3.4svh, 24px);
+      line-height: 1.45;
+    }
+    .hero__eyebrow {
+      font-size: 12.5px;
+      margin-bottom: 14px;
+    }
+    .hero__lede {
+      max-width: none;
+      /* 矮屏优先保证标题与按钮可见，正文让位 */
+      display: none;
+    }
+    .hero__actions {
+      gap: 10px;
+      margin-top: clamp(14px, 2.6svh, 24px);
+    }
+    .hero__actions .btn {
+      padding: 12px 22px;
+    }
+    :global(.br-desk) {
+      display: none;
+    }
+    .scroll-hint {
+      display: none;
+    }
+    .hero__facts {
+      grid-template-columns: repeat(2, 1fr);
+      margin-top: 0;
+    }
+    .hero__facts > div {
+      padding: 12px clamp(12px, 3.4vw, 20px);
+    }
+    /* 手机上只保留最关键的两条：套袋方式与用药；另两条在正文里都有 */
+    .hero__facts > div:nth-child(n + 3) {
+      display: none;
+    }
+    .hero__facts > div:nth-child(odd) {
+      border-left: 0;
+    }
+  }
+
+  /* 矮屏微调：iPhone SE（568px 高）这类机型上，
+     上面的 svh 系数仍会多出约 7px，把标题与间距再收一点即可完全放满一屏。 */
+  @media (max-width: 860px) and (max-height: 640px) {
+    .hero__title > span:first-child {
+      font-size: clamp(28px, 8.4svh, 44px);
+    }
+    .hero__promise {
+      font-size: clamp(14px, 3svh, 20px);
+    }
+    .hero__rule {
+      margin: 11px 0;
+    }
+    .hero__actions .btn {
+      padding: 11px 20px;
+    }
+    .hero__facts > div {
+      padding: 10px 14px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .hero__facts {
+      grid-template-columns: 1fr;
+    }
+    .hero__facts > div {
+      border-left: 0;
+    }
+    .hero__actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .btn {
+      width: 100%;
+    }
+  }
+</style>

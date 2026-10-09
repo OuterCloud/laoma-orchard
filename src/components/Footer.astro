@@ -1,0 +1,153 @@
+---
+import Logo from './Logo.astro';
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  site: SiteInfo;
+  links: { href: string; label: string }[];
+}
+const { site, links } = Astro.props;
+const { contact, place } = site;
+const year = new Date().getFullYear();
+---
+
+<footer class="foot">
+  <div class="wrap foot__grid">
+    <div class="foot__brand">
+      <Logo class="brand__mark--foot" />
+      <p class="foot__name">{site.name}</p>
+      <p class="foot__desc">
+        {place.full} · 自家果园<br />人工逐果套袋 · 生长季全程不施农药
+      </p>
+    </div>
+
+    <nav class="foot__nav" aria-label="页脚导航">
+      <p class="foot__head">页面</p>
+      {links.map((l) => <a href={l.href}>{l.label}</a>)}
+      <a href="#contact">联系我们</a>
+    </nav>
+
+    <div class="foot__contact">
+      <p class="foot__head">联系</p>
+      {contact.wechat.value ? (
+        <p>{contact.wechat.label}：{contact.wechat.value}</p>
+      ) : (
+        <p data-placeholder="wechat"><mark>【待填写：{contact.wechat._pending}】</mark></p>
+      )}
+      {contact.hours.value ? (
+        <p>{contact.hours.label}：{contact.hours.value}</p>
+      ) : (
+        <p data-placeholder="hours"><mark>【待填写：{contact.hours._pending}】</mark></p>
+      )}
+      <p class="foot__addr">{place.full}</p>
+    </div>
+  </div>
+
+  <div class="wrap foot__bar">
+    <p>© {year} {site.name} · {place.province}{place.city}{place.county}</p>
+    <p class="foot__tip">网站照片均为果园实拍</p>
+  </div>
+</footer>
+
+<style>
+  .foot {
+    background: var(--ink);
+    color: rgba(251, 247, 241, 0.8);
+    padding-top: clamp(48px, 7vw, 78px);
+  }
+  .foot__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(28px, 4vw, 64px);
+    padding-bottom: clamp(38px, 5vw, 60px);
+  }
+  .foot__brand :global(.brand__mark--foot) {
+    width: 34px;
+    height: 34px;
+    color: var(--apple-soft);
+    margin-bottom: 16px;
+  }
+  .foot__name {
+    font-family: var(--font-serif);
+    font-size: 23px;
+    color: var(--paper);
+    letter-spacing: 0.07em;
+    margin-bottom: 12px;
+  }
+  .foot__desc {
+    font-size: 13.5px;
+    line-height: 2;
+  }
+  .foot__head {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(251, 247, 241, 0.76);
+    margin-bottom: 18px;
+  }
+  .foot__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .foot__nav a {
+    font-size: 14.5px;
+    transition: color 0.3s var(--ease);
+    width: fit-content;
+    /* 触屏可点面积：文字本身只有 27px 高，用内边距把点击区撑到 44px */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 8px;
+  }
+  .foot__nav a:hover {
+    color: var(--paper);
+  }
+  .foot__contact p {
+    font-size: 14.5px;
+    margin-bottom: 11px;
+  }
+  .foot__contact mark {
+    background: rgba(196, 85, 63, 0.16);
+    color: #e8b49c;
+    font-size: 13px;
+  }
+  .foot__bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    padding-block: 24px;
+    border-top: 1px solid rgba(251, 247, 241, 0.1);
+    font-size: 12.5px;
+    color: rgba(251, 247, 241, 0.76);
+  }
+  .foot__tip {
+    font-family: var(--font-num);
+    letter-spacing: 0.1em;
+  }
+
+  @media (max-width: 940px) {
+    .foot__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .foot__brand {
+      grid-column: span 2;
+    }
+  }
+  @media (max-width: 560px) {
+    .foot__grid {
+      grid-template-columns: 1fr;
+    }
+    .foot__brand {
+      grid-column: span 1;
+    }
+    /* 触屏上把页脚链接的点击区再加宽，接近 44x44 的舒适尺寸 */
+    .foot__nav a {
+      padding-inline: 10px;
+      margin-inline-start: -10px;
+    }
+  }
+</style>

@@ -1,0 +1,226 @@
+---
+import ContactCard from './ContactCard.astro';
+import { resolveWechatQr } from '../lib/wechat-qr';
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  site: SiteInfo;
+}
+const { site } = Astro.props;
+const { contact, place } = site;
+
+/*
+ * 微信二维码：图片放进 src/assets/，再把文件名填到 site.json 的
+ * contact.wechatQr.src 即可出现。
+ * 解析逻辑与悬浮浮窗共用 lib/wechat-qr.ts，避免两处不一致。
+ */
+const qrImage = resolveWechatQr(contact);
+
+const hasWechat = Boolean(contact.wechat.value) || Boolean(qrImage);
+---
+
+<section class="contact section" id="contact" aria-labelledby="contactTitle">
+  <div class="wrap contact__inner">
+    <p class="kicker kicker--light reveal"><span>07</span>联系老马</p>
+    <h2 class="h2 h2--light reveal" id="contactTitle" style="--d:70ms">
+      想吃今年的苹果，<br />直接找老马
+    </h2>
+    <p class="contact__lede reveal" style="--d:140ms">
+      问价、下单、问进园，都可以。老马平时在园子里，微信是最快能联系上的方式；
+      白天发消息当天就能回，晚上发的可能得等第二天早上。
+    </p>
+
+    <div class="contact__cards">
+      {hasWechat ? (
+        <>
+          {contact.wechat.value && (
+            <ContactCard
+              label={contact.wechat.label}
+              value={contact.wechat.value}
+              copyable
+              hint="昵称可以重名，建议以二维码为准；加的时候说一下是想买苹果还是进园"
+              order={0}
+            />
+          )}
+          {qrImage && (
+            <ContactCard
+              label={contact.wechatQr.label}
+              src={qrImage}
+              hint="手机长按识别，或用微信扫一扫；电脑上打开微信扫这张图"
+              order={contact.wechat.value ? 1 : 0}
+            />
+          )}
+        </>
+      ) : (
+        <ContactCard
+          label={contact.wechat.label}
+          pending={contact.wechat._pending}
+          order={0}
+        />
+      )}
+
+      <ContactCard
+        label={contact.hours.label}
+        value={contact.hours.value}
+        pending={contact.hours._pending}
+        order={2}
+      />
+    </div>
+
+    <p class="contact__sign reveal" style="--d:210ms">
+      {place.county} · {site.name}<br />
+      <span>果子是慢慢长的，我们也是慢慢卖的。</span>
+    </p>
+  </div>
+</section>
+
+<style>
+  .contact {
+    position: relative;
+    background: linear-gradient(165deg, #2a231d 0%, #1d1a16 55%, #241c17 100%);
+    color: var(--paper);
+    overflow: hidden;
+  }
+  .contact::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(90% 62% at 78% 8%, rgba(163, 43, 34, 0.3), transparent 65%);
+    pointer-events: none;
+  }
+  .contact__inner {
+    position: relative;
+    z-index: 1;
+  }
+  .contact .h2 {
+    color: var(--paper);
+    margin-bottom: 24px;
+  }
+  .contact__lede {
+    color: rgba(251, 247, 241, 0.82);
+    max-width: 56ch;
+    font-size: clamp(15px, 1.15vw, 17.5px);
+    line-height: 1.95;
+  }
+
+  .contact__cards {
+    margin-top: clamp(38px, 5vw, 62px);
+    display: grid;
+    /* 自适应等宽列：卡片数量变化（只留微信、或加上二维码）时不会出现宽窄不一的拉伸 */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+    gap: clamp(14px, 1.8vw, 24px);
+  }
+
+  /* 卡片自身样式在此统一作用于子组件根元素 */
+  .contact__cards :global(.contact__card) {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: clamp(22px, 2.6vw, 34px);
+    border: 1px solid rgba(251, 247, 241, 0.16);
+    border-radius: var(--r-md);
+    /* 底色给足不透明度：卡片里有一键复制按钮这类半透明控件，
+       底层太空会让按钮上的文字对比度不够。 */
+    background: rgba(251, 247, 241, 0.07);
+    transition:
+      background-color 0.45s var(--ease),
+      border-color 0.45s var(--ease),
+      transform 0.45s var(--ease);
+  }
+  .contact__cards :global(.contact__card--pending) {
+    border-style: dashed;
+    background: rgba(251, 247, 241, 0.035);
+  }
+  .contact__cards :global(.contact__label) {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    /* 用 --apple-lift：--apple-soft 在深色卡片上只有 2.8:1，不达标 */
+    color: var(--apple-lift);
+  }
+  .contact__cards :global(.contact__value) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-serif);
+    font-size: clamp(17px, 1.7vw, 23px);
+    color: var(--paper);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+  .contact__cards :global(.contact__value--pending) {
+    font-family: var(--font-sans);
+  }
+  .contact__cards :global(.contact__value mark) {
+    background: rgba(196, 85, 63, 0.2);
+    color: #f3c9b4;
+    font-family: var(--font-sans);
+    font-size: 14px;
+  }
+  .contact__cards :global(.contact__hint) {
+    font-size: 13px;
+    color: rgba(251, 247, 241, 0.8);
+    margin-top: auto;
+  }
+  .contact__cards :global(.contact__qr) {
+    margin-top: 4px;
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    background: #fff;
+    padding: 10px;
+    width: fit-content;
+  }
+  /* 二维码别做太小：显示尺寸直接决定能否被扫出来。
+     原图是 880px 的 PNG，缩到这个尺寸仍有充足余量。 */
+  .contact__cards :global(.contact__qr img) {
+    width: 200px;
+    height: auto;
+  }
+  .contact__cards :global(.contact__copy) {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--paper);
+    /* 底色比原来更实：字号从 10.5px 提到 12px 后，
+       原先 0.14 的透明度让对比度掉到 3.93:1（需 4.5），这里加厚修正。 */
+    background: rgba(251, 247, 241, 0.24);
+    border: 1px solid rgba(251, 247, 241, 0.42);
+    border-radius: 100px;
+    /* 触屏可点面积：视觉上仍是小胶囊，但点击区域撑到 44px 高 */
+    padding: 12px 18px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    transition:
+      background-color 0.3s var(--ease),
+      color 0.3s var(--ease);
+  }
+  .contact__cards :global(.contact__copy:hover) {
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .contact__cards :global(.contact__copy[data-copied]) {
+    background: var(--leaf);
+    border-color: var(--leaf);
+    color: #fff;
+  }
+
+  .contact__sign {
+    margin-top: clamp(44px, 6vw, 76px);
+    padding-top: 30px;
+    border-top: 1px solid rgba(251, 247, 241, 0.14);
+    font-family: var(--font-serif);
+    font-size: clamp(16px, 1.5vw, 20px);
+    line-height: 1.85;
+    letter-spacing: 0.05em;
+    color: rgba(251, 247, 241, 0.9);
+  }
+  .contact__sign span {
+    color: rgba(251, 247, 241, 0.8);
+    font-size: 0.88em;
+  }
+</style>

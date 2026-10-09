@@ -1,0 +1,136 @@
+---
+import { Picture } from 'astro:assets';
+import orchardCanopy from '../assets/crops/wide-orchard-canopy.jpg';
+---
+
+<section class="feature" aria-label="果园全貌">
+  <figure class="feature__figure" data-scale-in>
+    <Picture
+      src={orchardCanopy}
+      alt="挂满果袋的果树，树势开张，果实自下而上分布均匀"
+      widths={[640, 960, 1280, 1440, 1600]}
+      sizes="100vw"
+      formats={['avif', 'webp']}
+      quality={54}
+      loading="lazy"
+    />
+    <figcaption class="feature__caption reveal">
+      <p class="kicker kicker--light"><span>果园全貌</span></p>
+      <p class="feature__text">挂果多的树，枝子会往下垂。老马说，这样的树一看就知道今年没亏待它。</p>
+    </figcaption>
+  </figure>
+</section>
+
+<script>
+  // 图片进入视口时轻微「落定」，制造推进感；用 IO 而非滚动监听。
+  const figures = document.querySelectorAll<HTMLElement>('[data-scale-in]');
+  if (figures.length) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      figures.forEach((el) => el.classList.add('is-in'));
+    } else {
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (!e.isIntersecting) return;
+            e.target.classList.add('is-in');
+            io.unobserve(e.target);
+          });
+        },
+        { threshold: 0.15 }
+      );
+      figures.forEach((el) => io.observe(el));
+    }
+  }
+</script>
+
+<style>
+  .feature {
+    position: relative;
+  }
+  .feature__figure {
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature__figure :global(img) {
+    width: 100%;
+    height: clamp(380px, 68vh, 720px);
+    object-fit: cover;
+    transform: scale(1.06);
+    transition: transform 1.6s var(--ease-out);
+  }
+  .feature__figure.is-in :global(img) {
+    transform: scale(1);
+  }
+  .feature__figure::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(20, 18, 14, 0.36),
+      rgba(20, 18, 14, 0.1) 40%,
+      rgba(20, 18, 14, 0.7)
+    );
+    pointer-events: none;
+  }
+  /*
+   * 说明文字块自己做「底衬」，而不是只靠整图渐变。
+   *
+   * 原因：这块文字位置不固定（桌面约在图片纵向 48%、手机约 53%），
+   * 无论整图遮罩怎么调，总会遇到照片的受光处；「果园全貌」这个 14px 小标签
+   * 就曾坐在亮区上、白字几乎读不出。
+   * 用半透明深色 + 模糊做局部底衬，是目前唯一稳定可控的做法
+   * （悬浮二维码卡片也用同一套手法）。
+   */
+  .feature__caption {
+    position: absolute;
+    z-index: 2;
+    left: var(--pad);
+    right: var(--pad);
+    bottom: clamp(24px, 5vh, 56px);
+    max-width: min(560px, calc(100% - var(--pad) * 2));
+    padding: clamp(20px, 3vw, 30px) clamp(20px, 3vw, 32px);
+    border-radius: var(--r-lg);
+    background: rgba(18, 16, 13, 0.62);
+    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    color: var(--paper);
+    text-shadow: 0 1px 2px rgba(10, 9, 7, 0.7);
+  }
+  .feature__text {
+    font-family: var(--font-serif);
+    font-size: clamp(19px, 2.4vw, 34px);
+    line-height: 1.55;
+    max-width: 22ch;
+    letter-spacing: 0.03em;
+    /* 已有底衬，不再需要大范围阴影 */
+    text-shadow: none;
+  }
+  /*
+   * 遮罩从中段就要开始变暗。
+   * 说明文字块位置不固定：桌面约在图片纵向 48% 处、手机约 53% 处，
+   * 原来到 72% 才明显变暗，导致「果园全貌」这个小标签坐在照片的受光处、
+   * 白字读不清（实测该处对比度极低）。这里把中段整体加厚。
+   */
+  .feature__figure::after {
+    /* 文字已有自己的底衬，整图只留一层很轻的压暗，让照片保持通透 */
+    background: linear-gradient(
+      180deg,
+      rgba(20, 18, 14, 0.26) 0%,
+      rgba(20, 18, 14, 0.08) 40%,
+      rgba(20, 18, 14, 0.22) 100%
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .feature__figure :global(img) {
+      transform: none;
+    }
+  }
+  @media (max-width: 860px) {
+    .feature__figure :global(img) {
+      height: clamp(320px, 56vh, 480px);
+    }
+  }
+</style>

@@ -1,0 +1,131 @@
+---
+import type { SiteInfo } from '../lib/site';
+
+interface Props {
+  place: SiteInfo['place'];
+  visitNote: SiteInfo['contact']['visitNote'];
+}
+const { place, visitNote } = Astro.props;
+---
+
+<section class="visit section" id="visit" aria-labelledby="visitTitle">
+  <div class="wrap">
+    <header class="section__head">
+      <p class="kicker reveal"><span>06</span>到园来</p>
+      <h2 class="h2 reveal" id="visitTitle" style="--d:70ms">想自己来看看，随时欢迎</h2>
+      <p class="lede reveal" style="--d:140ms">
+        果子到底怎么长的，嘴上说一百句，不如在树下站十分钟。园子在{place.county}，
+        来之前发个微信问一句，老马好安排时间、也免得你白跑。
+      </p>
+    </header>
+
+    <div class="visit__grid">
+      <article class="visit__card reveal">
+        <h3>开放进园</h3>
+        <p>每年 10—11 月果子红了，就能进园。具体哪天开园得看当年的天气和熟度，每年不太一样。</p>
+        {visitNote.value ? (
+          <p class="visit__value">{visitNote.label}时间：{visitNote.value}</p>
+        ) : (
+          <p class="visit__ph" data-placeholder="visitNote">
+            采摘期：<mark>【待老马确认：{visitNote._pending}】</mark>
+          </p>
+        )}
+      </article>
+
+      <article class="visit__card reveal" style="--d:70ms">
+        <h3>怎么来</h3>
+        <p>自驾导航到{place.county}，到了县城按老马发的定位走最后一段乡道。</p>
+        <p class="visit__addr">
+          <span class="visit__addr-label">地址</span>
+          {place.full}
+        </p>
+      </article>
+
+      <article class="visit__card reveal" style="--d:140ms">
+        <h3>来园提示</h3>
+        <p>
+          果园是泥土地，下雨后会滑，建议穿平底鞋；带孩子来的话，看住孩子别拽枝条 ——
+          一个枝子上挂着的，是十几颗果。
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .visit {
+    background: var(--paper-2);
+    border-block: 1px solid var(--line-soft);
+  }
+  .visit__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(18px, 2.4vw, 32px);
+  }
+  .visit__card {
+    padding: clamp(24px, 3vw, 38px);
+    background: var(--paper);
+    border-radius: var(--r-lg);
+    border: 1px solid var(--line-soft);
+    transition:
+      transform 0.5s var(--ease),
+      box-shadow 0.5s var(--ease);
+  }
+  .visit__card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--sh-md);
+  }
+  .visit__card h3 {
+    font-size: clamp(17px, 1.5vw, 21px);
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .visit__card p {
+    font-size: 15px;
+    color: var(--ink-3);
+    line-height: 1.95;
+  }
+  .visit__card p + p {
+    margin-top: 0.85em;
+  }
+  .visit__value {
+    color: var(--ink) !important;
+    font-weight: 500;
+  }
+  .visit__ph {
+    font-size: 14.5px;
+  }
+  .visit__ph mark {
+    font-size: 13.5px;
+  }
+  /* 地址是访客要照着走的，做成可轻松选中的小块并加重 */
+  .visit__addr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: var(--r-sm);
+    background: var(--paper-2);
+    color: var(--ink) !important;
+    font-weight: 500;
+    line-height: 1.8;
+    font-variant-numeric: tabular-nums;
+  }
+  .visit__addr-label {
+    flex: none;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+  }
+
+  @media (max-width: 940px) {
+    .visit__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
