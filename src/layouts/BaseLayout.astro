@@ -102,6 +102,9 @@ const jsonLd = {
     </script>
 
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+    <!-- 页面级额外 head 内容（例如 404 页的 noindex） -->
+    <slot name="head" />
   </head>
 
   <body>

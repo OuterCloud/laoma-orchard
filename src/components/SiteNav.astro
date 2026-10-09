@@ -1,4 +1,5 @@
 ---
+import { homeLinks } from '../lib/links';
 import Logo from './Logo.astro';
 
 interface Props {
@@ -6,15 +7,7 @@ interface Props {
   links?: { href: string; label: string }[];
 }
 
-const {
-  links = [
-    { href: '#story', label: '果园' },
-    { href: '#year', label: '一年' },
-    { href: '#gallery', label: '实拍' },
-    { href: '#why', label: '为什么' },
-    { href: '#visit', label: '到园' },
-  ],
-} = Astro.props;
+const { links = homeLinks } = Astro.props;
 ---
 
 <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>

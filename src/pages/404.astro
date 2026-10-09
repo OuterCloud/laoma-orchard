@@ -1,0 +1,109 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteNav from '../components/SiteNav.astro';
+import Footer from '../components/Footer.astro';
+import { getSite } from '../lib/site';
+import { linkedLinks } from '../lib/links';
+
+const site = await getSite();
+---
+
+<BaseLayout
+  site={site}
+  title={`页面没找到 · ${site.name}`}
+  description="这个地址在园子里找不到。回到首页看看果园的样子，或者直接微信联系老马。"
+>
+  <Fragment slot="head">
+    <!--
+      404 页不该被收录：它自带 /404/ 的 canonical，
+      若被索引会变成一个内容重复且无意义的搜索结果。
+      follow 保留链接权重传递，noindex 只阻止收录本身。
+    -->
+    <meta name="robots" content="noindex, follow" />
+  </Fragment>
+
+  <SiteNav links={linkedLinks} />
+
+  <main id="main" class="wrap section notfound">
+    <p class="kicker"><span>404</span>走错路了</p>
+
+    <h1 class="h2">这条小路<strong>没通到果园</strong></h1>
+
+    <p class="lede">
+      你要找的页面不在了 —— 可能是地址打错了一个字，也可能是这个页面已经撤掉。
+      园子还在原地，回首页就能看到。
+    </p>
+
+    <div class="notfound__actions">
+      <a class="btn btn--solid" href="/">回首页看看果园</a>
+      <a class="btn" href="/#contact">微信联系老马</a>
+    </div>
+
+    <p class="notfound__note">
+      如果是从别处的链接点进来的，那个链接可能已经失效了。
+    </p>
+  </main>
+
+  <Footer site={site} links={linkedLinks} />
+</BaseLayout>
+
+<style>
+  .notfound {
+    /* 顶部让开固定导航，底部留出呼吸空间 */
+    padding-top: calc(var(--nav-h) + clamp(48px, 12vh, 120px));
+    padding-bottom: clamp(64px, 14vh, 140px);
+    max-width: 46rem;
+  }
+
+  .notfound .h2 {
+    margin-bottom: 20px;
+  }
+
+  .notfound__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: clamp(28px, 5vh, 44px);
+  }
+
+  /* .btn 原本定义在 Hero 组件内（作用域隔离），这里单独实现一版 */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 13px 26px;
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-size: 15.5px;
+    color: var(--ink);
+    text-decoration: none;
+    transition:
+      background-color 0.3s var(--ease),
+      border-color 0.3s var(--ease),
+      color 0.3s var(--ease);
+  }
+
+  .btn:hover {
+    border-color: var(--ink);
+    background: var(--paper-2);
+  }
+
+  .btn--solid {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+
+  .btn--solid:hover {
+    background: var(--apple);
+    border-color: var(--apple);
+    color: var(--paper);
+  }
+
+  .notfound__note {
+    margin-top: 28px;
+    font-size: 14px;
+    color: var(--ink-4);
+  }
+</style>
