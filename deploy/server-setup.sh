@@ -16,7 +16,7 @@
 #
 # 可通过环境变量覆盖：
 #   SITE_DOMAIN   默认 laoma-apples.site
-#   ACME_EMAIL    证书通知邮箱（必填，除非已有证书）
+#   ACME_EMAIL    证书通知邮箱（**可选**，不填也能签发；见 6/7 步说明）
 #   STACK_DIR     现有项目目录，默认 /home/admin/mizuno-ami-tiger
 
 set -euo pipefail
@@ -116,14 +116,24 @@ if [[ -f "${SSL_DIR}/laoma-fullchain.pem" ]]; then
   ok "证书已存在，跳过"
 else
   command -v certbot >/dev/null || { apt-get update -qq && apt-get install -y -qq certbot >/dev/null; }
-  if [[ -z "${ACME_EMAIL:-}" ]]; then
-    warn "未设置 ACME_EMAIL，跳过证书申请"
-    warn "拿到证书后可重新执行：sudo ACME_EMAIL=you@example.com ./deploy/server-setup.sh"
+
+  # 邮箱是**可选**的。
+  # Let's Encrypt 的证书到期提醒邮件服务已于 2025-06-26 停止
+  # （https://letsencrypt.org/2025/06/26/expiration-notification-service-has-ended），
+  # 因此不填邮箱没有任何实际损失：证书照常签发，自动续期也照常工作
+  #（续期靠的是 certbot.timer，与邮箱无关）。
+  # 邮箱只存在服务器本地 /etc/letsencrypt/，不会写进证书，也不会出现在网站上。
+  if [[ -n "${ACME_EMAIL:-}" ]]; then
+    EMAIL_ARGS=(--email "$ACME_EMAIL")
   else
-    certbot certonly --webroot -w "$ACME_DIR" \
+    EMAIL_ARGS=(--register-unsafely-without-email)
+    warn "未提供 ACME_EMAIL，将不注册邮箱（不影响签发与自动续期）"
+  fi
+
+  if certbot certonly --webroot -w "$ACME_DIR" \
       -d "$SITE_DOMAIN" -d "www.${SITE_DOMAIN}" \
-      --email "$ACME_EMAIL" --agree-tos --non-interactive --keep-until-expiring \
-      2>&1 | sed 's/^/  /'
+      "${EMAIL_ARGS[@]}" --agree-tos --non-interactive --keep-until-expiring \
+      2>&1 | sed 's/^/  /'; then
     LIVE="/etc/letsencrypt/live/${SITE_DOMAIN}"
     cp "${LIVE}/fullchain.pem" "${SSL_DIR}/laoma-fullchain.pem"
     cp "${LIVE}/privkey.pem"   "${SSL_DIR}/laoma-privkey.pem"
@@ -131,6 +141,9 @@ else
     chmod 600 "${SSL_DIR}/laoma-privkey.pem"
     docker exec "$NGINX_CONTAINER" nginx -s reload
     ok "证书已安装并重载"
+  else
+    warn "证书申请失败。常见原因：DNS 尚未解析到本机、或防火墙未放行 80 端口"
+    warn "处理好后重新执行本脚本即可（幂等，不会重复改动）"
   fi
 fi
 

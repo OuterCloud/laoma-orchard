@@ -42,7 +42,11 @@ git clone git@github.com:OuterCloud/laoma-orchard.git
 cd laoma-orchard
 
 # 2. 一次性初始化（先装好 Node 22+）
-sudo ACME_EMAIL=你的邮箱 ./deploy/server-setup.sh
+sudo ./deploy/server-setup.sh
+
+# 邮箱是可选的，不填也能正常签发 HTTPS 证书。
+# Let's Encrypt 的到期提醒邮件服务已于 2025-06-26 停止，填了基本也收不到东西。
+# 想填就加：sudo ACME_EMAIL=you@example.com ./deploy/server-setup.sh
 
 # 3. 日常更新
 git pull && ./deploy/publish.sh
@@ -98,7 +102,12 @@ cd ~/laoma-orchard && git pull && ./deploy/publish.sh
 
 ## HTTPS 与续期
 
-证书由 certbot（webroot 模式）签发，脚本会：
+证书由 certbot（webroot 模式）签发。**不需要提供邮箱**：Let's Encrypt 的证书
+到期提醒邮件服务已于 [2025-06-26 停止](https://letsencrypt.org/2025/06/26/expiration-notification-service-has-ended)，
+不填邮箱不影响签发，也不影响自动续期（续期由 `certbot.timer` 驱动，与邮箱无关）。
+邮箱只保存在服务器本地 `/etc/letsencrypt/`，不会写进证书，也不会出现在网站上。
+
+脚本会：
 
 - 把证书复制到 `nginx/ssl/laoma-fullchain.pem` 与 `laoma-privkey.pem`
 - 注册 `/etc/letsencrypt/renewal-hooks/deploy/laoma-reload.sh`，
