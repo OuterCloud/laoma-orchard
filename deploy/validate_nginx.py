@@ -50,6 +50,8 @@ KNOWN_DIRECTIVES = {
     "ssl_certificate", "ssl_certificate_key",
     # 其它
     "if", "rewrite",
+    # HTTP/2（nginx >= 1.25.1 的独立指令写法：http2 on;）
+    "http2",
 }
 
 # 把「指令参数」误写成独立指令的常见误用。
@@ -57,7 +59,7 @@ KNOWN_DIRECTIVES = {
 PARAM_NOT_DIRECTIVE = {
     "default_server": "应写成 `listen 80 default_server;`（它是 listen 的参数）",
     "ssl": "应写成 `listen 443 ssl;`（ssl 是 listen 的参数）",
-    "http2": "应写成 `listen 443 ssl;` 加 `http2;`，或 `listen 443 ssl http2;`",
+    "http2": "nginx >= 1.25.1 用 `http2 on;`；更早版本用 `listen 443 ssl http2;`",
     "quic": "quic 是 listen 的参数：`listen 443 quic;`",
     "backlog": "backlog 是 listen 的参数",
     "reuseport": "reuseport 是 listen 的参数",
@@ -68,6 +70,9 @@ PARAM_NOT_DIRECTIVE = {
 
 # 允许独立成行的指令（值本身就短）
 OK_STANDALONE = {"http2"}
+
+# 这些「参数名」若带 on/off/值 出现，则是合法的独立指令，不再报错
+PARAM_OK_WITH_VALUE = {"http2"}
 
 
 def strip_comments(lines: list[str]) -> list[str]:
@@ -105,6 +110,11 @@ def check(path: pathlib.Path) -> list[str]:
             continue
 
         # 独立的「参数被当指令」误用
+        # 带值的独立指令（如 `http2 on;`）先放行
+        mv = re.fullmatch(r"([a-z_0-9]+)\s+(on|off)\s*;", t)
+        if mv and mv.group(1) in PARAM_OK_WITH_VALUE:
+            continue
+
         m = re.fullmatch(r"([a-z_0-9]+)\s*;", t)
         if m and m.group(1) in PARAM_NOT_DIRECTIVE and m.group(1) not in OK_STANDALONE:
             errs.append(
