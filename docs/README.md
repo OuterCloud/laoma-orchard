@@ -113,6 +113,10 @@ Docker: nginx:alpine 容器（占用宿主 80/443）
 
 ---
 
+---
+
+---
+
 ## 六、日常只需要记住三条命令
 
 ```bash
@@ -127,3 +131,41 @@ curl -sSI https://laoma-apples.site/ | head -1
 ```
 
 更多见 [04-日常维护与排障.md](04-日常维护与排障.md)。
+
+---
+
+## 七、常用链接速查
+
+### 腾讯云（域名 / DNS）
+
+| 用途 | 链接 |
+| --- | --- |
+| 购买域名 | <https://buy.cloud.tencent.com/domain> |
+| 域名管理（实名认证、续费） | <https://console.cloud.tencent.com/domain/all-domain/all> |
+| DNSPod 域名列表 | <https://console.dnspod.cn/dns/list> |
+| **本站的解析记录页** | <https://console.dnspod.cn/dns/laoma-apples.site/record> |
+| EdgeOne 控制台（未采用） | <https://console.cloud.tencent.com/edgeone/makers> |
+
+### 阿里云（服务器 / DNS）
+
+| 用途 | 链接 |
+| --- | --- |
+| 控制台首页 | <https://home.console.aliyun.com/> |
+| **轻量应用服务器**（拿 IP、看状态、放行端口） | <https://swas.console.aliyun.com/> |
+| ECS 控制台 | <https://ecs.console.aliyun.com/> |
+| 云解析 DNS（未采用） | <https://dns.console.aliyun.com/> |
+| 域名注册（万网） | <https://wanwang.aliyun.com/> |
+| 费用 / 续费 | <https://usercenter2.aliyun.com/finance> |
+
+### 验证工具
+
+| 用途 | 链接 |
+| --- | --- |
+| 查解析是否生效 | <https://tool.chinaz.com/dns/> |
+| 查网站各地能否访问 | <https://www.itdog.cn/http/> |
+| 查备案状态（官方） | <https://beian.miit.gov.cn/> |
+| Let's Encrypt（免费证书） | <https://letsencrypt.org/zh-cn/> |
+| Certbot（证书客户端） | <https://certbot.eff.org/> |
+
+> 注：工信部备案系统在国内访问正常，境外网络可能打不开。
+

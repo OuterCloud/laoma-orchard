@@ -5,7 +5,8 @@
 
 ## 一、最初的想法
 
-用腾讯云 **EdgeOne Pages** 免费托管：
+用腾讯云 **EdgeOne Pages** 免费托管
+（控制台：<https://console.cloud.tencent.com/edgeone/makers>）：
 
 - 免费额度永久提供
 - 官方支持 Astro，连 GitHub 仓库就能自动部署
@@ -87,7 +88,8 @@ Access Restricted or Authentication Expired.
 就比 EdgeOne 海外节点（约 200ms）更快，而且这台服务器本来就在跑别的项目，
 不用额外花钱。
 
-**于是最终方案定为：阿里云香港服务器 + 自建 Nginx。**
+**于是最终方案定为：阿里云香港服务器 + 自建 Nginx**
+（服务器控制台：<https://swas.console.aliyun.com/>）。
 
 ## 五、EdgeOne 适合什么场景
 
@@ -102,6 +104,11 @@ Access Restricted or Authentication Expired.
 
 **优点值得肯定**：免费额度永久、Astro 官方支持、中文控制台、
 连 GitHub 自动部署、自带 HTTPS。**如果访客不在大陆，我会推荐它。**
+
+相关链接：
+- [EdgeOne Pages 控制台](https://console.cloud.tencent.com/edgeone/makers)
+- [域名管理文档（401 规则出处）](https://edgeone.cloud.tencent.com/pages/document/175191784523485184)
+- [域名 ICP 备案要求文档](https://cloud.tencent.com/document/product/1552/110835)
 
 ## 六、这次弯路的价值
 
