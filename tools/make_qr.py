@@ -22,7 +22,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = Path.home() / "Downloads" / "老马苹果园" / "微信二维码.jpg"
+SRC = ROOT / "originals" / "微信二维码.jpg"
 OUT = ROOT / "src" / "assets" / "wechat-qr.png"
 
 TARGET = 880          # 输出边长；页面显示约 180 CSS px，给足余量

@@ -67,7 +67,7 @@ pnpm build      # 产出到 dist/
 
 ### 2. 换微信二维码
 
-把新的二维码图片放到 `~/Downloads/老马苹果园/` 下、命名 `微信二维码.jpg`，然后：
+把新的二维码图片放到 `originals/` 下、命名 `微信二维码.jpg`，然后：
 
 ```bash
 pnpm qr

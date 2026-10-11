@@ -3,7 +3,7 @@
 """
 老马苹果园 —— 照片管线（整批）
 
-从原始手机照片（~/Downloads/老马苹果园）产出 Astro 工程真正使用的图片：
+从原始手机照片（仓库内 originals/）产出 Astro 工程真正使用的图片：
 
   src/assets/photos/*.jpg  调色后的整图，交给 Astro 生成响应式尺寸与格式
   src/assets/crops/*.jpg   预裁图（首屏 / 宽幅）
@@ -24,7 +24,7 @@ from pathlib import Path
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC_DIR = Path.home() / "Downloads" / "老马苹果园"
+SRC_DIR = ROOT / "originals"
 META = ROOT / "tools" / "photos.json"
 PHOTOS_OUT = ROOT / "src" / "assets" / "photos"
 CROPS_OUT = ROOT / "src" / "assets" / "crops"

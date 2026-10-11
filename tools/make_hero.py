@@ -17,7 +17,7 @@ from PIL import Image
 from process_images import HERO, HERO_TALL, cover, grade  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC_DIR = Path.home() / "Downloads" / "老马苹果园"
+SRC_DIR = ROOT / "originals"
 OUT = ROOT / "src" / "assets" / "crops"
 
 cfg = json.loads((ROOT / "src" / "data" / "hero.json").read_text("utf-8"))
